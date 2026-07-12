@@ -686,13 +686,83 @@ window.importJSON = function() { try { const data = JSON.parse(document.getEleme
 window.downloadJSON = function() { const json = JSON.stringify(buildJSON(), null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ISP_${regionsData.head.name || 'Sculpture'}_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
 
 // ========== VR ==========
-window.enterVR = async function() { try { const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] }); renderer.xr.setSession(session); } catch (e) { alert('VR δεν είναι διαθέσιμο. Δοκίμασε Meta Quest Browser ή Chrome με VR headset.'); } };
+window.enterVR = async function() {
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
+    // The camera's current position/rotation becomes the VR rig's origin, so reset it
+    // to a sane, comfortable pose before handing off — otherwise whatever the desktop
+    // OrbitControls left it at (e.g. high up and tilted down) is what you see in the headset.
+    controls.enabled = false;
+    camera.position.set(0, 1.6, 6);
+    camera.rotation.set(0, 0, 0);
+    camera.lookAt(0, 2, 0);
+    renderer.xr.setSession(session);
+  } catch (e) {
+    console.error('VR session error:', e);
+    alert('VR δεν είναι διαθέσιμο. Δοκίμασε Meta Quest Browser ή Chrome με VR headset.');
+  }
+};
 if ('xr' in navigator) { navigator.xr.isSessionSupported('immersive-vr').then(supported => { if (supported) document.getElementById('vr-btn').style.display = 'block'; }); }
+
+renderer.xr.addEventListener('sessionstart', () => { controls.enabled = false; });
+renderer.xr.addEventListener('sessionend', () => {
+  controls.enabled = true;
+  camera.position.set(0, 3, 8);
+  controls.target.set(0, 2.5, 0);
+});
+
+// ========== VR CONTROLLERS (Quest triggers) ==========
+// Without this, there is no way to interact once inside the headset — mouse/click events
+// never fire in an immersive session, only XR controller 'select' events do.
+const controllerRaycaster = new THREE.Raycaster();
+const tempMatrix = new THREE.Matrix4();
+
+function buildControllerRay() {
+  const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -6)]);
+  const material = new THREE.LineBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.6 });
+  const line = new THREE.Line(geometry, material);
+  line.name = 'controller-ray';
+  return line;
+}
+
+function onControllerSelect(event) {
+  const controller = event.target;
+  tempMatrix.identity().extractRotation(controller.matrixWorld);
+  controllerRaycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+  controllerRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+  const intersects = controllerRaycaster.intersectObjects(getAllClickableMeshes());
+  if (intersects.length === 0) return;
+  const obj = intersects[0].object;
+  if (obj.userData.region && regionsData[obj.userData.region]) {
+    // NOTE: this only gives visual feedback (a light pulse) — the 2D contribution
+    // panel is an HTML overlay and will not be visible while presenting in VR.
+    // See chat notes on why, and what it would take to fix that separately.
+    state.selectedRegion = obj.userData.region;
+    const region = obj.userData.region;
+    if (regionLights[region]) {
+      const original = regionLights[region].intensity;
+      regionLights[region].intensity = 4;
+      setTimeout(() => { regionLights[region].intensity = original; }, 250);
+    }
+  } else if (obj.userData.assetId !== undefined) {
+    selectAsset(obj.userData.assetId);
+  }
+}
+
+const controller1 = renderer.xr.getController(0);
+controller1.addEventListener('selectstart', onControllerSelect);
+controller1.add(buildControllerRay());
+scene.add(controller1);
+
+const controller2 = renderer.xr.getController(1);
+controller2.addEventListener('selectstart', onControllerSelect);
+controller2.add(buildControllerRay());
+scene.add(controller2);
 
 // ========== ANIMATION ==========
 const clock = new THREE.Clock();
 function animate() {
-  requestAnimationFrame(animate); const time = clock.getElapsedTime();
+  const time = clock.getElapsedTime();
   if (regionMeshes.periphery) { regionMeshes.periphery.rotation.y = time * 0.1; regionMeshes.periphery.children[1].rotation.z = time * 0.15; regionMeshes.periphery.children[2].rotation.x = time * 0.08; }
   const pos = particles.geometry.attributes.position.array;
   for (let i = 1; i < pos.length; i += 3) { pos[i] += Math.sin(time + pos[i - 1]) * 0.002; if (pos[i] > 10) pos[i] = -10; }
@@ -718,11 +788,15 @@ function animate() {
     asset.label.position.y = asset.mesh.position.y + 2.2;
   });
 
-  controls.update(); renderer.render(scene, camera);
+  if (!renderer.xr.isPresenting) controls.update();
+  renderer.render(scene, camera);
 }
 
 // ========== INIT ==========
-updateLegend(); updateStats(); animate();
+updateLegend(); updateStats();
+// IMPORTANT: renderer.setAnimationLoop (not requestAnimationFrame) is what makes this
+// loop run inside a WebXR session — this was the reason the headset view froze/never loaded.
+renderer.setAnimationLoop(animate);
 
 // Demo data
 setTimeout(() => {
