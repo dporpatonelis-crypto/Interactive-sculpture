@@ -313,6 +313,15 @@ scene.fog = new THREE.FogExp2(0x0a0a12, 0.015);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 3, 8);
 
+// Rig ("dolly") that holds the camera. On desktop this stays at identity and OrbitControls
+// drives the camera directly, exactly as before. In VR, the headset takes over the camera's
+// LOCAL position/rotation completely every frame (you cannot just set camera.position once
+// and expect it to stick) — so to place the player somewhere in the world, you move this
+// parent rig instead, and zero out the camera's local transform.
+const cameraRig = new THREE.Group();
+cameraRig.add(camera);
+scene.add(cameraRig);
+
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI * 0.85; controls.minDistance = 2; controls.maxDistance = 20;
@@ -686,16 +695,23 @@ window.importJSON = function() { try { const data = JSON.parse(document.getEleme
 window.downloadJSON = function() { const json = JSON.stringify(buildJSON(), null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ISP_${regionsData.head.name || 'Sculpture'}_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
 
 // ========== VR ==========
+// Tune these two numbers to change where the player spawns relative to the sculpture
+// (which sits at the world origin). Increase z to stand further back.
+const VR_SPAWN = { x: 0, y: 0, z: 10 };
+
 window.enterVR = async function() {
   try {
     const session = await navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['local-floor'] });
-    // The camera's current position/rotation becomes the VR rig's origin, so reset it
-    // to a sane, comfortable pose before handing off — otherwise whatever the desktop
-    // OrbitControls left it at (e.g. high up and tilted down) is what you see in the headset.
     controls.enabled = false;
-    camera.position.set(0, 1.6, 6);
+    // IMPORTANT: once presenting, the headset drives the camera's LOCAL position/rotation
+    // every single frame — setting camera.position here has no lasting effect (this is why
+    // you were spawning at the world origin, inside the sculpture, regardless of what we set
+    // camera.position to). To actually place the player in the world, we zero the camera's
+    // local transform and move the parent rig instead.
+    camera.position.set(0, 0, 0);
     camera.rotation.set(0, 0, 0);
-    camera.lookAt(0, 2, 0);
+    cameraRig.position.set(VR_SPAWN.x, VR_SPAWN.y, VR_SPAWN.z);
+    cameraRig.rotation.set(0, 0, 0); // facing -Z, i.e. toward the sculpture at the origin
     renderer.xr.setSession(session);
   } catch (e) {
     console.error('VR session error:', e);
@@ -707,6 +723,8 @@ if ('xr' in navigator) { navigator.xr.isSessionSupported('immersive-vr').then(su
 renderer.xr.addEventListener('sessionstart', () => { controls.enabled = false; });
 renderer.xr.addEventListener('sessionend', () => {
   controls.enabled = true;
+  cameraRig.position.set(0, 0, 0);
+  cameraRig.rotation.set(0, 0, 0);
   camera.position.set(0, 3, 8);
   controls.target.set(0, 2.5, 0);
 });
@@ -752,12 +770,12 @@ function onControllerSelect(event) {
 const controller1 = renderer.xr.getController(0);
 controller1.addEventListener('selectstart', onControllerSelect);
 controller1.add(buildControllerRay());
-scene.add(controller1);
+cameraRig.add(controller1); // child of the rig, same as camera — keeps ray aligned with the view
 
 const controller2 = renderer.xr.getController(1);
 controller2.addEventListener('selectstart', onControllerSelect);
 controller2.add(buildControllerRay());
-scene.add(controller2);
+cameraRig.add(controller2);
 
 // ========== ANIMATION ==========
 const clock = new THREE.Clock();
