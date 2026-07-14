@@ -279,7 +279,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 const state = {
   selectedRegion: null, selectedCategory: 'theological',
   contributions: [], autoRotate: false, hoveredRegion: null,
-  selectedAsset: null, assets: []
+  selectedAsset: null, assets: [], foundDiscoveries: new Set(), hoveredMarker: null
 };
 
 const regionsData = {
@@ -294,6 +294,34 @@ const regionsData = {
 const categoryColors = {
   theological: 0x8866ff, ethical: 0x66ff88, historical: 0xffaa44, philosophical: 0x44aaff
 };
+
+// ========== DISCOVERY SCENARIO DATA ==========
+// This array has exactly the shape you'd get from pushing the students' Google Sheet rows to
+// a JSON file on GitHub Pages — one object per team/inscription. To wire that up later, replace
+// the DISCOVERIES constant below with `await loadDiscoveries()` and point the fetch URL at your
+// published JSON (same pattern as the rest of your Sacred Blueprint pipeline).
+const DISCOVERIES = [
+  {
+    id: 'basil-philanthropy',
+    region: 'arms',            // which sculpture region is dark until this is found
+    team: 'Ομάδα Α',
+    category: 'ethical',       // picks the reveal color from categoryColors
+    markerPosition: { x: 1.7, y: 1.15, z: -2.1 },  // where the hidden inscription sits — off to the side, behind the sculpture
+    shortText: '"...ὅσον δύνασαι ἀγαθοποίει..."',
+    fullText: 'Ο Μέγας Βασίλειος δίδασκε πως η φιλανθρωπία δεν είναι επιλογή αλλά χρέος: όποιος έχει παραπάνω απ᾽ όσο χρειάζεται, οφείλει να το μοιραστεί με όσους δεν έχουν τίποτα.',
+    source: 'Βασίλειος Καισαρείας, Ομιλία «Εις τους πλουτούντας»'
+  }
+  // Add one object per team/region here. Each unique `region` value starts fully dark
+  // (see setRegionDark below) until its matching discovery is found.
+];
+
+async function loadDiscoveries() {
+  // Drop-in replacement for the DISCOVERIES constant above once the Sheet → GitHub Pages
+  // pipeline publishes real data:
+  // const res = await fetch('https://raw.githubusercontent.com/USERNAME/REPO/main/discoveries.json');
+  // return await res.json();
+  return DISCOVERIES;
+}
 
 // ========== SCENE SETUP ==========
 const canvas = document.getElementById('vr-canvas');
@@ -404,8 +432,128 @@ function addInscription(text, position, region) {
   sprite.position.copy(position); sprite.scale.set(2.0, 0.25, 1); sprite.userData = { region, text, isInscription: true };
   sculptureGroup.add(sprite); inscriptions.push(sprite);
 }
-addInscription('"Ο Θεός εστί φως"', new THREE.Vector3(0, 0.3, 2.5), 'base');
-addInscription('"Μαιευτική μέθοδος"', new THREE.Vector3(0, 4.3, 1.4), 'head');
+// ========== DISCOVERY MARKERS (Φάση 1 & 2: Σκοτάδι + Αναζήτηση) ==========
+const discoveryMarkers = []; // { mesh, light, data, found, revealPanel }
+const activeReveals = []; // material/light tween state, processed each frame in animate()
+const activeBursts = []; // little particle bursts for the "born from light" moment
+
+// A region with an un-found discovery starts completely dark (near-black, no glow, light off) —
+// regionLights already default to intensity 0, so this only needs to flatten the material.
+function setRegionDark(region) {
+  const rm = regionMeshes[region]; if (!rm) return;
+  const meshes = [];
+  if (Array.isArray(rm)) meshes.push(...rm); else if (rm.isGroup) rm.traverse(c => { if (c.isMesh) meshes.push(c); }); else meshes.push(rm);
+  meshes.forEach(m => { m.material = m.material.clone(); m.material.color.setHex(0x050505); m.material.emissive.setHex(0x000000); m.material.emissiveIntensity = 0; });
+}
+
+function createHiddenMarker(disc) {
+  const geo = new THREE.IcosahedronGeometry(0.12, 0);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x333344, emissive: 0x222244, emissiveIntensity: 0.6, roughness: 0.4, metalness: 0.3 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(disc.markerPosition.x, disc.markerPosition.y, disc.markerPosition.z);
+  mesh.userData = { isDiscoveryMarker: true, discoveryId: disc.id };
+  mesh.castShadow = true;
+  sculptureGroup.add(mesh);
+  const light = new THREE.PointLight(0x8899ff, 0.5, 2.2);
+  light.position.copy(mesh.position);
+  scene.add(light);
+  const entry = { mesh, light, data: disc, found: false, revealPanel: null };
+  discoveryMarkers.push(entry);
+  return entry;
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' '); let line = '';
+  words.forEach(word => {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxWidth && line !== '') { ctx.fillText(line, x, y); line = word + ' '; y += lineHeight; }
+    else { line = test; }
+  });
+  ctx.fillText(line, x, y);
+  return y + lineHeight;
+}
+
+function showRevealPanel(markerObj, disc) {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 300;
+  const ctx = c.getContext('2d');
+  const colorHex = categoryColors[disc.category] || 0xffffff;
+  ctx.fillStyle = 'rgba(8,12,24,0.9)';
+  ctx.beginPath(); ctx.moveTo(20, 0); ctx.arcTo(640, 0, 640, 300, 20); ctx.arcTo(640, 300, 0, 300, 20); ctx.arcTo(0, 300, 0, 0, 20); ctx.arcTo(0, 0, 640, 0, 20); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#' + colorHex.toString(16).padStart(6, '0'); ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#ffcc66'; ctx.font = 'bold 22px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(disc.team ? `✨ ${disc.team}` : '✨ Ανακάλυψη!', 320, 40);
+  ctx.fillStyle = '#eef4ff'; ctx.font = '17px "Segoe UI", sans-serif'; ctx.textAlign = 'left';
+  const afterY = wrapText(ctx, disc.fullText, 28, 82, 584, 25);
+  ctx.fillStyle = '#8899aa'; ctx.font = 'italic 13px "Segoe UI", sans-serif';
+  ctx.fillText('— ' + disc.source, 28, Math.min(afterY + 10, 272));
+  const texture = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0, depthTest: false }));
+  sprite.position.copy(markerObj.mesh.position); sprite.position.y += 0.6;
+  sprite.scale.set(2.2, 2.2 * 300 / 640, 1);
+  sprite.renderOrder = 998;
+  sculptureGroup.add(sprite);
+  markerObj.revealPanel = sprite;
+  let op = 0;
+  const fade = setInterval(() => { op += 0.06; sprite.material.opacity = Math.min(op, 0.97); if (op >= 1) clearInterval(fade); }, 30);
+}
+
+function burstAt(position, colorHex) {
+  const count = 40;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const vel = [];
+  for (let i = 0; i < count; i++) {
+    pos[i * 3] = position.x; pos[i * 3 + 1] = position.y; pos[i * 3 + 2] = position.z;
+    const theta = Math.random() * Math.PI * 2, phi = Math.random() * Math.PI;
+    vel.push({ x: Math.sin(phi) * Math.cos(theta) * 0.7, y: Math.cos(phi) * 0.5 + 0.3, z: Math.sin(phi) * Math.sin(theta) * 0.7 });
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color: colorHex, size: 0.06, transparent: true, opacity: 1 });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  activeBursts.push({ pts, vel, start: clock.getElapsedTime(), duration: 1.2 });
+}
+
+// Φάση 3: Η Αποκάλυψη — lights the target region from dark to its category color, shows the
+// full inscription text as a world-space panel, and pops a small particle burst.
+function revealDiscovery(markerObj) {
+  if (markerObj.found) return;
+  markerObj.found = true;
+  const disc = markerObj.data;
+  state.foundDiscoveries.add(disc.id);
+  const colorHex = categoryColors[disc.category] || 0xffffff;
+
+  const rm = regionMeshes[disc.region];
+  if (rm) {
+    const meshes = [];
+    if (Array.isArray(rm)) meshes.push(...rm); else if (rm.isGroup) rm.traverse(c => { if (c.isMesh) meshes.push(c); }); else meshes.push(rm);
+    meshes.forEach(m => {
+      m.material = m.material.clone();
+      activeReveals.push({ mesh: m, fromColor: m.material.color.clone(), toColor: new THREE.Color(colorHex), fromEmissive: m.material.emissiveIntensity, toEmissive: 2.2, startTime: clock.getElapsedTime(), duration: 2.2 });
+    });
+  }
+  if (regionLights[disc.region]) {
+    regionLights[disc.region].color.setHex(colorHex);
+    activeReveals.push({ light: regionLights[disc.region], fromIntensity: 0, toIntensity: 3, startTime: clock.getElapsedTime(), duration: 2.2 });
+  }
+  regionsData[disc.region].category = disc.category;
+
+  showRevealPanel(markerObj, disc);
+  burstAt(markerObj.mesh.position, colorHex);
+  markerObj.mesh.visible = false; markerObj.light.intensity = 0;
+
+  updateLegend();
+  if (typeof drawMenu === 'function' && menuAttached) drawMenu();
+}
+
+function initDiscoveries(list) {
+  const darkenedRegions = new Set();
+  list.forEach(disc => {
+    if (!darkenedRegions.has(disc.region)) { setRegionDark(disc.region); darkenedRegions.add(disc.region); }
+    createHiddenMarker(disc);
+  });
+}
+initDiscoveries(DISCOVERIES);
 
 // ========== ENVIRONMENT ==========
 const floor = new THREE.Mesh(new THREE.CircleGeometry(20, 64), new THREE.MeshStandardMaterial({ color: 0x0a0a15, roughness: 0.9, metalness: 0.1 }));
@@ -429,6 +577,7 @@ function getAllClickableMeshes() {
     else meshes.push(m);
   });
   state.assets.forEach(asset => { asset.mesh.traverse(c => { if (c.isMesh) meshes.push(c); }); });
+  discoveryMarkers.forEach(m => { if (!m.found) meshes.push(m.mesh); });
   return meshes;
 }
 
@@ -442,24 +591,31 @@ function onPointerMove(e) {
   const tooltip = document.getElementById('tooltip');
   if (intersects.length > 0) {
     const obj = intersects[0].object;
-    if (obj.userData.region && regionsData[obj.userData.region]) {
+    if (obj.userData.isDiscoveryMarker) {
+      state.hoveredRegion = null; state.hoveredAsset = null;
+      state.hoveredMarker = discoveryMarkers.find(m => m.mesh === obj) || null;
+      canvas.style.cursor = 'pointer'; tooltip.textContent = '🔍 Κάτι κρύβεται εδώ...';
+      tooltip.style.left = e.clientX + 12 + 'px'; tooltip.style.top = (e.clientY - 30) + 'px'; tooltip.style.opacity = '1';
+    } else if (obj.userData.region && regionsData[obj.userData.region]) {
+      state.hoveredMarker = null;
       state.hoveredRegion = obj.userData.region; state.hoveredAsset = null;
       canvas.style.cursor = 'pointer'; tooltip.textContent = regionsData[obj.userData.region].label;
       tooltip.style.left = e.clientX + 12 + 'px'; tooltip.style.top = (e.clientY - 30) + 'px'; tooltip.style.opacity = '1';
     } else if (obj.userData.assetId !== undefined) {
       const asset = state.assets.find(a => a.id === obj.userData.assetId);
-      state.hoveredRegion = null; state.hoveredAsset = asset;
+      state.hoveredRegion = null; state.hoveredAsset = asset; state.hoveredMarker = null;
       canvas.style.cursor = 'pointer'; tooltip.textContent = `📦 ${asset ? asset.name : '3D Asset'}`;
       tooltip.style.left = e.clientX + 12 + 'px'; tooltip.style.top = (e.clientY - 30) + 'px'; tooltip.style.opacity = '1';
     } else { clearHover(); }
   } else { clearHover(); }
 }
-function clearHover() { state.hoveredRegion = null; state.hoveredAsset = null; canvas.style.cursor = 'default'; document.getElementById('tooltip').style.opacity = '0'; }
+function clearHover() { state.hoveredRegion = null; state.hoveredAsset = null; state.hoveredMarker = null; canvas.style.cursor = 'default'; document.getElementById('tooltip').style.opacity = '0'; }
 
 let lastClickTime = 0;
 function onClick(e) {
   const now = Date.now(); const isDoubleClick = now - lastClickTime < 300; lastClickTime = now;
-  if (state.hoveredRegion) { state.selectedRegion = state.hoveredRegion; openPanel('contrib-panel'); document.getElementById('contrib-region-name').textContent = regionsData[state.hoveredRegion].name; }
+  if (state.hoveredMarker) { revealDiscovery(state.hoveredMarker); }
+  else if (state.hoveredRegion) { state.selectedRegion = state.hoveredRegion; openPanel('contrib-panel'); document.getElementById('contrib-region-name').textContent = regionsData[state.hoveredRegion].name; }
   else if (state.hoveredAsset) { selectAsset(state.hoveredAsset.id); if (isDoubleClick) openAssetEditPanel(state.hoveredAsset); }
 }
 function onKeyDown(e) {
@@ -722,8 +878,6 @@ if ('xr' in navigator) { navigator.xr.isSessionSupported('immersive-vr').then(su
 
 renderer.xr.addEventListener('sessionstart', () => {
   controls.enabled = false;
-  vrUiState.selectedRegion = null;
-  vrUiState.hoveredIndex = -1;
   if (menuAttached) drawMenu();
 });
 renderer.xr.addEventListener('sessionend', () => {
@@ -737,11 +891,10 @@ renderer.xr.addEventListener('sessionend', () => {
   menuAttached = false; menuController = null; pointerController = null;
 });
 
-// ========== VR WRIST MENU ==========
-// A real, world-space 3D UI panel — drawn on a canvas, mapped as a texture onto a plane,
-// attached to the left controller. The right controller's ray is used to point at buttons;
-// pulling the trigger over a button is detected via a UV hit-test against a canvas-pixel
-// layout table, exactly like a touchscreen.
+// ========== VR WRIST MENU (read-only progress dashboard) ==========
+// A real, world-space 3D panel — drawn on a canvas, mapped as a texture onto a plane, attached
+// to the left controller — showing which teams'/regions' inscriptions have been found so far.
+// No buttons here: in this scenario the interaction is finding things in the world, not menus.
 const menuCanvas = document.createElement('canvas');
 menuCanvas.width = 512; menuCanvas.height = 680;
 const menuCtx = menuCanvas.getContext('2d');
@@ -754,8 +907,10 @@ menuMesh.renderOrder = 999;
 // Tune position/angle of the wrist panel here (meters / radians, local to the controller).
 const MENU_OFFSET = { x: 0, y: 0.05, z: -0.04, rotX: -1.15 };
 
-const vrUiState = { selectedRegion: null, selectedCategory: 'theological', hoveredIndex: -1 };
-const menuLayout = { buttons: [] };
+// Thumbstick locomotion: left stick moves (like WASD/mouse on desktop), right stick snap-turns.
+const LOCOMOTION = { moveSpeed: 2.2, deadzone: 0.15, snapAngle: Math.PI / 6, snapDeadzone: 0.6 };
+const vrLocomotion = { turnLock: false };
+
 let menuController = null, pointerController = null, menuAttached = false;
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -767,88 +922,42 @@ function hexToRgba(hex, a) { const r = (hex >> 16) & 255, g = (hex >> 8) & 255, 
 
 function drawMenu() {
   const ctx = menuCtx, W = menuCanvas.width, H = menuCanvas.height;
-  menuLayout.buttons = [];
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(10,15,30,0.94)'; roundRect(ctx, 0, 0, W, H, 22); ctx.fill();
   ctx.strokeStyle = 'rgba(100,180,255,0.35)'; ctx.lineWidth = 3; roundRect(ctx, 2, 2, W - 4, H - 4, 22); ctx.stroke();
 
-  ctx.fillStyle = '#aaccff'; ctx.font = 'bold 22px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('🏛️ ISP — VR ΜΕΝΟΥ', W / 2, 38);
+  ctx.fillStyle = '#aaccff'; ctx.font = 'bold 20px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('🔦 Πρόοδος Ανακάλυψης', W / 2, 36);
 
-  ctx.textAlign = 'left'; ctx.fillStyle = '#8899aa'; ctx.font = '14px "Segoe UI", sans-serif';
-  ctx.fillText('Κατηγορία:', 24, 68);
-  const cats = [['theological', 'Θεολ.', 0x8866ff], ['ethical', 'Ηθική', 0x66ff88], ['historical', 'Ιστορ.', 0xffaa44], ['philosophical', 'Φιλοσ.', 0x44aaff]];
-  const catW = (W - 48 - 3 * 10) / 4;
-  cats.forEach(([key, label, color], i) => {
-    const x = 24 + i * (catW + 10), y = 78, w = catW, h = 42;
-    const idx = menuLayout.buttons.length;
-    const active = vrUiState.selectedCategory === key, hovered = vrUiState.hoveredIndex === idx;
-    ctx.fillStyle = active ? hexToRgba(color, 0.55) : hexToRgba(color, 0.2);
-    roundRect(ctx, x, y, w, h, 8); ctx.fill();
-    ctx.strokeStyle = hexToRgba(color, hovered ? 1 : (active ? 0.9 : 0.5)); ctx.lineWidth = hovered ? 3 : 2;
-    roundRect(ctx, x, y, w, h, 8); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.font = '12px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(label, x + w / 2, y + h / 2 + 4);
-    menuLayout.buttons.push({ x, y, w, h, action: 'category', value: key });
-  });
-
-  ctx.textAlign = 'left'; ctx.fillStyle = '#8899aa'; ctx.font = '14px "Segoe UI", sans-serif';
-  ctx.fillText('Περιοχή:', 24, 148);
-  let ry = 160; const rowH = 44;
-  Object.entries(regionsData).forEach(([key, rd]) => {
-    const idx = menuLayout.buttons.length;
-    const active = vrUiState.selectedRegion === key, hovered = vrUiState.hoveredIndex === idx;
-    const colorHex = rd.category ? categoryColors[rd.category] : rd.color;
-    ctx.fillStyle = active ? 'rgba(100,180,255,0.22)' : 'rgba(255,255,255,0.04)';
-    roundRect(ctx, 24, ry, W - 48, rowH - 8, 8); ctx.fill();
-    if (active || hovered) { ctx.strokeStyle = hovered ? 'rgba(100,180,255,0.9)' : 'rgba(100,180,255,0.5)'; ctx.lineWidth = hovered ? 3 : 2; roundRect(ctx, 24, ry, W - 48, rowH - 8, 8); ctx.stroke(); }
-    ctx.beginPath(); ctx.fillStyle = '#' + colorHex.toString(16).padStart(6, '0');
-    ctx.arc(44, ry + (rowH - 8) / 2, 7, 0, Math.PI * 2); ctx.fill();
+  let ry = 64;
+  DISCOVERIES.forEach(d => {
+    const found = state.foundDiscoveries.has(d.id);
+    const colorHex = categoryColors[d.category] || 0x888888;
+    ctx.fillStyle = found ? hexToRgba(colorHex, 0.22) : 'rgba(255,255,255,0.04)';
+    roundRect(ctx, 24, ry, W - 48, 54, 10); ctx.fill();
+    ctx.beginPath(); ctx.fillStyle = found ? '#' + colorHex.toString(16).padStart(6, '0') : '#333344';
+    ctx.arc(46, ry + 27, 9, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#ddeeff'; ctx.font = '15px "Segoe UI", sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(rd.name, 62, ry + (rowH - 8) / 2 + 5);
-    ctx.fillStyle = '#ffcc66'; ctx.font = '13px "Segoe UI", sans-serif'; ctx.textAlign = 'right';
-    ctx.fillText(String(rd.contributions), W - 40, ry + (rowH - 8) / 2 + 4);
-    menuLayout.buttons.push({ x: 24, y: ry, w: W - 48, h: rowH - 8, action: 'region', value: key });
-    ry += rowH;
+    ctx.fillText(d.team || regionsData[d.region].name, 66, ry + 23);
+    ctx.fillStyle = found ? '#aaffcc' : '#556677'; ctx.font = '12px "Segoe UI", sans-serif';
+    ctx.fillText(found ? '✨ Βρέθηκε' : '⚫ Κρυμμένο ακόμα', 66, ry + 41);
+    ry += 62;
   });
 
-  const canSubmit = !!vrUiState.selectedRegion;
-  const subY = ry + 12, subH = 50, subIdx = menuLayout.buttons.length;
-  const subHovered = vrUiState.hoveredIndex === subIdx;
-  ctx.fillStyle = canSubmit ? 'rgba(42,90,140,0.9)' : 'rgba(60,60,70,0.5)';
-  roundRect(ctx, 24, subY, W - 48, subH, 10); ctx.fill();
-  ctx.strokeStyle = subHovered && canSubmit ? 'rgba(150,210,255,0.9)' : 'transparent'; ctx.lineWidth = 3;
-  if (subHovered && canSubmit) { roundRect(ctx, 24, subY, W - 48, subH, 10); ctx.stroke(); }
-  ctx.fillStyle = canSubmit ? '#fff' : '#667788'; ctx.font = 'bold 15px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('✨ ΠΡΟΣΘΗΚΗ ΣΥΝΕΙΣΦΟΡΑΣ', W / 2, subY + subH / 2 + 5);
-  menuLayout.buttons.push({ x: 24, y: subY, w: W - 48, h: subH, action: 'submit' });
-
-  const statY = subY + subH + 26;
-  ctx.textAlign = 'left'; ctx.fillStyle = '#8899aa'; ctx.font = '13px "Segoe UI", sans-serif';
-  const total = state.contributions.length, strong = state.contributions.filter(c => c.docScore > 5).length, glow = Math.min(total * 8, 100);
-  ctx.fillText(`📊 Συνεισφορές: ${total}`, 24, statY);
-  ctx.fillText(`Ισχυρή τεκμηρίωση: ${strong}`, 24, statY + 22);
-  ctx.fillText(`Λάμψη γλυπτού: ${glow}%`, 24, statY + 44);
-  ctx.fillText(`3D Assets: ${state.assets.length}`, 24, statY + 66);
-  if (!vrUiState.selectedRegion) { ctx.fillStyle = '#556677'; ctx.font = 'italic 11px "Segoe UI", sans-serif'; ctx.fillText('Διάλεξε περιοχή για να συνεχίσεις', 24, statY + 90); }
+  ry += 10;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(24, ry); ctx.lineTo(W - 24, ry); ctx.stroke();
+  ry += 24;
+  ctx.fillStyle = '#8899aa'; ctx.font = '14px "Segoe UI", sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`Σύνολο: ${state.foundDiscoveries.size} / ${DISCOVERIES.length}`, 24, ry);
+  if (state.foundDiscoveries.size < DISCOVERIES.length) {
+    ctx.fillStyle = '#556677'; ctx.font = 'italic 12px "Segoe UI", sans-serif';
+    ctx.fillText('Κοίτα γύρω σου στον χώρο...', 24, ry + 24);
+  } else {
+    ctx.fillStyle = '#ffcc66'; ctx.font = 'bold 13px "Segoe UI", sans-serif';
+    ctx.fillText('🎉 Όλα βρέθηκαν!', 24, ry + 24);
+  }
 
   menuTexture.needsUpdate = true;
-}
-
-function handleMenuAction(btn) {
-  if (btn.action === 'category') { vrUiState.selectedCategory = btn.value; state.selectedCategory = btn.value; }
-  else if (btn.action === 'region') { vrUiState.selectedRegion = btn.value; state.selectedRegion = btn.value; }
-  else if (btn.action === 'submit') { if (!vrUiState.selectedRegion) return; submitVRContribution(vrUiState.selectedRegion, vrUiState.selectedCategory); }
-  drawMenu();
-}
-
-function submitVRContribution(region, category) {
-  // No text/source input in VR yet (see chat) — logs a lightweight, flagged contribution
-  // that's easy to find and fill in properly later from the desktop 2D panel.
-  const contribution = { id: Date.now(), region, text: '(Συνεισφορά από VR — προς συμπλήρωση)', source: '(εκκρεμεί τεκμηρίωση)', category, docScore: 2, timestamp: new Date().toISOString() };
-  state.contributions.push(contribution);
-  const rd = regionsData[region]; rd.contributions++; rd.docStrength += 2; rd.category = category;
-  applyVisualUpdate(region); updateStats(); updateLegend();
 }
 
 function attachMenuToController(controller) {
@@ -883,28 +992,18 @@ function onControllerSelect(event) {
   controllerRaycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
   controllerRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
-  // The menu takes priority when this controller's ray is pointing at it (skip the hand
-  // that's actually wearing the menu — it shouldn't be able to click its own panel).
-  if (menuAttached && controller !== menuController) {
-    const menuHit = controllerRaycaster.intersectObject(menuMesh, false);
-    if (menuHit.length > 0 && menuHit[0].uv) {
-      const px = menuHit[0].uv.x * menuCanvas.width, py = (1 - menuHit[0].uv.y) * menuCanvas.height;
-      const btn = menuLayout.buttons.find(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
-      if (btn) handleMenuAction(btn);
-      return;
-    }
-  }
-
   const intersects = controllerRaycaster.intersectObjects(getAllClickableMeshes());
   if (intersects.length === 0) return;
   const obj = intersects[0].object;
-  if (obj.userData.region && regionsData[obj.userData.region]) {
+  if (obj.userData.isDiscoveryMarker) {
+    const markerObj = discoveryMarkers.find(m => m.mesh === obj);
+    if (markerObj) revealDiscovery(markerObj);
+  } else if (obj.userData.region && regionsData[obj.userData.region]) {
     const region = obj.userData.region;
-    state.selectedRegion = region; vrUiState.selectedRegion = region;
-    if (menuAttached) drawMenu();
+    state.selectedRegion = region;
     if (regionLights[region]) {
       const original = regionLights[region].intensity;
-      regionLights[region].intensity = 4;
+      regionLights[region].intensity = Math.max(original, 4);
       setTimeout(() => { regionLights[region].intensity = original; }, 250);
     }
   } else if (obj.userData.assetId !== undefined) {
@@ -914,13 +1013,15 @@ function onControllerSelect(event) {
 
 const controller1 = renderer.xr.getController(0);
 controller1.addEventListener('selectstart', onControllerSelect);
-controller1.addEventListener('connected', (e) => { if (e.data && e.data.handedness === 'left') attachMenuToController(controller1); });
+controller1.addEventListener('connected', (e) => { controller1.userData.inputSource = e.data; if (e.data && e.data.handedness === 'left') attachMenuToController(controller1); });
+controller1.addEventListener('disconnected', () => { controller1.userData.inputSource = null; });
 controller1.add(buildControllerRay());
 cameraRig.add(controller1); // child of the rig, same as camera — keeps ray aligned with the view
 
 const controller2 = renderer.xr.getController(1);
 controller2.addEventListener('selectstart', onControllerSelect);
-controller2.addEventListener('connected', (e) => { if (e.data && e.data.handedness === 'left') attachMenuToController(controller2); });
+controller2.addEventListener('connected', (e) => { controller2.userData.inputSource = e.data; if (e.data && e.data.handedness === 'left') attachMenuToController(controller2); });
+controller2.addEventListener('disconnected', () => { controller2.userData.inputSource = null; });
 controller2.add(buildControllerRay());
 cameraRig.add(controller2);
 
@@ -930,7 +1031,8 @@ renderer.xr.addEventListener('sessionstart', () => { setTimeout(() => { if (!men
 // ========== ANIMATION ==========
 const clock = new THREE.Clock();
 function animate() {
-  const time = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  const time = clock.elapsedTime;
   if (regionMeshes.periphery) { regionMeshes.periphery.rotation.y = time * 0.1; regionMeshes.periphery.children[1].rotation.z = time * 0.15; regionMeshes.periphery.children[2].rotation.x = time * 0.08; }
   const pos = particles.geometry.attributes.position.array;
   for (let i = 1; i < pos.length; i += 3) { pos[i] += Math.sin(time + pos[i - 1]) * 0.002; if (pos[i] > 10) pos[i] = -10; }
@@ -956,20 +1058,73 @@ function animate() {
     asset.label.position.y = asset.mesh.position.y + 2.2;
   });
 
-  // Menu hover: raycast the pointer (right) controller against the wrist menu every frame,
-  // so a button lights up as you aim at it — only redraws the canvas when the target changes.
-  if (renderer.xr.isPresenting && menuAttached && pointerController) {
-    tempMatrix.identity().extractRotation(pointerController.matrixWorld);
-    controllerRaycaster.ray.origin.setFromMatrixPosition(pointerController.matrixWorld);
-    controllerRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-    const hit = controllerRaycaster.intersectObject(menuMesh, false);
-    let newHover = -1;
-    if (hit.length > 0 && hit[0].uv) {
-      const px = hit[0].uv.x * menuCanvas.width, py = (1 - hit[0].uv.y) * menuCanvas.height;
-      const idx = menuLayout.buttons.findIndex(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
-      newHover = idx;
+  // Φάση 2: pulse the still-hidden markers gently so they're findable but not obvious,
+  // and auto-reveal one if the player walks close enough (covers "ή την πλησιάσει").
+  const camWorldPos = new THREE.Vector3();
+  camera.getWorldPosition(camWorldPos);
+  discoveryMarkers.forEach(m => {
+    if (m.found) return;
+    const pulse = 0.5 + Math.sin(time * 2 + m.mesh.id) * 0.25;
+    m.mesh.material.emissiveIntensity = pulse;
+    m.mesh.scale.setScalar(1 + Math.sin(time * 2) * 0.08);
+    m.light.intensity = 0.35 + pulse * 0.3;
+    if (camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
+  });
+
+  // Φάση 3: ease each region from dark to its reveal color/intensity over ~2 seconds.
+  for (let i = activeReveals.length - 1; i >= 0; i--) {
+    const r = activeReveals[i];
+    const t = Math.min((time - r.startTime) / r.duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    if (r.mesh) {
+      r.mesh.material.color.lerpColors(r.fromColor, r.toColor, eased);
+      r.mesh.material.emissive.copy(r.toColor);
+      r.mesh.material.emissiveIntensity = r.fromEmissive + (r.toEmissive - r.fromEmissive) * eased;
+    } else if (r.light) {
+      r.light.intensity = r.fromIntensity + (r.toIntensity - r.fromIntensity) * eased;
     }
-    if (newHover !== vrUiState.hoveredIndex) { vrUiState.hoveredIndex = newHover; drawMenu(); }
+    if (t >= 1) activeReveals.splice(i, 1);
+  }
+
+  // Little "born from light" particle bursts at the moment of discovery.
+  for (let i = activeBursts.length - 1; i >= 0; i--) {
+    const b = activeBursts[i];
+    const t = (time - b.start) / b.duration;
+    if (t >= 1) { scene.remove(b.pts); b.pts.geometry.dispose(); b.pts.material.dispose(); activeBursts.splice(i, 1); continue; }
+    const arr = b.pts.geometry.attributes.position.array;
+    for (let j = 0; j < b.vel.length; j++) { arr[j * 3] += b.vel[j].x * dt; arr[j * 3 + 1] += b.vel[j].y * dt; arr[j * 3 + 2] += b.vel[j].z * dt; b.vel[j].y -= dt * 0.4; }
+    b.pts.geometry.attributes.position.needsUpdate = true;
+    b.pts.material.opacity = 1 - t;
+  }
+
+  // ========== VR LOCOMOTION (thumbstick move + snap-turn) ==========
+  // Same idea as mouse/WASD on desktop: the left stick moves the rig relative to where you're
+  // looking (flattened to the floor plane so you can't fly up/down), the right stick snap-turns
+  // in fixed steps (smoother continuous turning is more comfortable for some, more nauseating
+  // for others — snap-turn is the safer classroom default; ask if you'd rather have smooth turn).
+  if (renderer.xr.isPresenting) {
+    const moveSource = menuController && menuController.userData.inputSource;
+    const turnSource = pointerController && pointerController.userData.inputSource;
+
+    if (moveSource && moveSource.gamepad) {
+      const axes = moveSource.gamepad.axes; // xr-standard mapping: axes[2]=strafe, axes[3]=forward/back
+      const ax = axes[2] || 0, ay = axes[3] || 0;
+      if (Math.abs(ax) > LOCOMOTION.deadzone || Math.abs(ay) > LOCOMOTION.deadzone) {
+        const forward = new THREE.Vector3(); camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+        const step = LOCOMOTION.moveSpeed * dt;
+        cameraRig.position.addScaledVector(forward, -ay * step);
+        cameraRig.position.addScaledVector(right, ax * step);
+      }
+    }
+
+    if (turnSource && turnSource.gamepad) {
+      const tx = turnSource.gamepad.axes[2] || 0;
+      if (!vrLocomotion.turnLock && Math.abs(tx) > LOCOMOTION.snapDeadzone) {
+        cameraRig.rotateY(tx > 0 ? -LOCOMOTION.snapAngle : LOCOMOTION.snapAngle);
+        vrLocomotion.turnLock = true;
+      } else if (Math.abs(tx) < 0.3) { vrLocomotion.turnLock = false; }
+    }
   }
 
   if (!renderer.xr.isPresenting) controls.update();
@@ -981,15 +1136,6 @@ updateLegend(); updateStats();
 // IMPORTANT: renderer.setAnimationLoop (not requestAnimationFrame) is what makes this
 // loop run inside a WebXR session — this was the reason the headset view froze/never loaded.
 renderer.setAnimationLoop(animate);
-
-// Demo data
-setTimeout(() => {
-  state.contributions.push({ id: 1, region: 'head', text: 'Η Θεολογία ως επιστήμη', source: 'Μέγας Βασίλειος, Εις το Άγιον Βάπτισμα', category: 'theological', docScore: 8, timestamp: new Date().toISOString() });
-  regionsData.head.contributions = 1; regionsData.head.docStrength = 8; regionsData.head.category = 'theological'; applyVisualUpdate('head');
-  state.contributions.push({ id: 2, region: 'base', text: 'Η παιδεία ως θεμέλιο', source: 'Μέγας Βασίλειος, Πρός τούς Νέους', category: 'ethical', docScore: 7, timestamp: new Date().toISOString() });
-  regionsData.base.contributions = 1; regionsData.base.docStrength = 7; regionsData.base.category = 'ethical'; applyVisualUpdate('base');
-  updateStats(); updateLegend();
-}, 500);
 </script>
 </body>
 </html>
