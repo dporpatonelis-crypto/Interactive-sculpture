@@ -385,15 +385,21 @@ controls.maxPolarAngle = Math.PI * 0.85; controls.minDistance = 2; controls.maxD
 controls.target.set(0, 2.5, 0);
 
 // ========== LIGHTING ==========
-const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.4); scene.add(ambientLight);
-const mainLight = new THREE.DirectionalLight(0xaaddff, 1.5);
+const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.55); scene.add(ambientLight);
+const mainLight = new THREE.DirectionalLight(0xaaddff, 1.8);
 mainLight.position.set(5, 10, 5); mainLight.castShadow = true;
 mainLight.shadow.mapSize.width = 2048; mainLight.shadow.mapSize.height = 2048;
 scene.add(mainLight);
-const rimLight = new THREE.DirectionalLight(0xffaa66, 0.5);
+const rimLight = new THREE.DirectionalLight(0xffaa66, 0.65);
 rimLight.position.set(-5, 5, -5); scene.add(rimLight);
-const fillLight = new THREE.DirectionalLight(0x4466aa, 0.3);
+const fillLight = new THREE.DirectionalLight(0x4466aa, 0.45);
 fillLight.position.set(0, -3, 5); scene.add(fillLight);
+
+// Subtle local pools of light keep both objects readable without washing out the space.
+const sculptureFillLight = new THREE.PointLight(0x5577aa, 0.55, 12);
+sculptureFillLight.position.set(0, 3, 4); scene.add(sculptureFillLight);
+const bishopFillLight = new THREE.PointLight(0xffbb88, 0.35, 4);
+bishopFillLight.position.set(7.05, 1.7, 3.0); scene.add(bishopFillLight);
 
 const regionLights = {};
 Object.keys(regionsData).forEach(key => {
@@ -765,10 +771,10 @@ window.setBishopAnimation = function(name) {
 
 // Easy-to-tune initial transform for the permanent bishop. The 1/7 factor is relative to
 // the previous 4.2-unit display size. Position/rotation follow the local Blender model
-// defaults (identity rotation) plus a small side offset so the sculpture stays clear.
+// defaults (identity rotation) plus a 3x side offset so the sculpture stays fully clear.
 const BISHOP_DISPLAY_TRANSFORM = {
   scaleFactor: 1 / 7,
-  offset: { x: 2.35, y: 0.18, z: 0.65 },
+  offset: { x: 7.05, y: 0.18, z: 1.95 },
   rotation: { x: 0, y: 0, z: 0 }
 };
 
@@ -831,9 +837,9 @@ function loadEmbeddedBishop() {
       displayTransform: BISHOP_DISPLAY_TRANSFORM
     };
 
-    // The embedded bishop replaces the procedural placeholder's central body.
+    // Keep the procedural interactive sculpture visible; the bishop is now a separate side object.
     [baseGroup, trunkMesh, leftArm, rightArm, headMesh, halo, coreMesh, coreLight]
-      .forEach(object => { if (object) object.visible = false; });
+      .forEach(object => { if (object) object.visible = true; });
 
     if (Object.keys(actions).length === 2) {
       setBishopAnimation('idle');
