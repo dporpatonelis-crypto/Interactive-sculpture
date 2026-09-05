@@ -763,6 +763,15 @@ window.setBishopAnimation = function(name) {
   updateBishopUI(name === 'idle' ? '🌙 Idle — ενεργό' : '🙌 Acknowledging — ενεργό');
 };
 
+// Easy-to-tune initial transform for the permanent bishop. The 1/7 factor is relative to
+// the previous 4.2-unit display size. Position/rotation follow the local Blender model
+// defaults (identity rotation) plus a small side offset so the sculpture stays clear.
+const BISHOP_DISPLAY_TRANSFORM = {
+  scaleFactor: 1 / 7,
+  offset: { x: 2.35, y: 0.18, z: 0.65 },
+  rotation: { x: 0, y: 0, z: 0 }
+};
+
 function loadEmbeddedBishop() {
   const status = document.getElementById('bishop-status');
   const objectUrl = URL.createObjectURL(new Blob(
@@ -780,9 +789,19 @@ function loadEmbeddedBishop() {
     const localBox = new THREE.Box3().setFromObject(root);
     const localSize = localBox.getSize(new THREE.Vector3());
     const targetHeight = 4.2;
-    const modelScale = targetHeight / Math.max(localSize.y, 0.001);
+    const baseModelScale = targetHeight / Math.max(localSize.y, 0.001);
+    const modelScale = baseModelScale * BISHOP_DISPLAY_TRANSFORM.scaleFactor;
     root.scale.setScalar(modelScale);
-    root.position.set(0, 0.06 - (localBox.min.y * modelScale), 0);
+    root.rotation.set(
+      BISHOP_DISPLAY_TRANSFORM.rotation.x,
+      BISHOP_DISPLAY_TRANSFORM.rotation.y,
+      BISHOP_DISPLAY_TRANSFORM.rotation.z
+    );
+    root.position.set(
+      BISHOP_DISPLAY_TRANSFORM.offset.x,
+      BISHOP_DISPLAY_TRANSFORM.offset.y - (localBox.min.y * modelScale),
+      BISHOP_DISPLAY_TRANSFORM.offset.z
+    );
 
     root.traverse(child => {
       if (child.isMesh) {
@@ -808,7 +827,8 @@ function loadEmbeddedBishop() {
     });
 
     state.bishop = {
-      root, mixer, actions, clips: gltf.animations, active: null, ready: true
+      root, mixer, actions, clips: gltf.animations, active: null, ready: true,
+      displayTransform: BISHOP_DISPLAY_TRANSFORM
     };
 
     // The embedded bishop replaces the procedural placeholder's central body.
