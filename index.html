@@ -125,12 +125,15 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
 .anim-btn:hover, .anim-btn.active { background: rgba(60, 140, 200, 0.4); border-color: rgba(60, 140, 200, 0.7); }
 
 /* ===== JSON PANEL ===== */
-#json-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; max-height: 70vh; display: none; flex-direction: column; }
-#json-panel textarea { width: 100%; height: 300px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(100, 180, 255, 0.2); border-radius: 6px; color: #aaddff; padding: 10px; font-size: 11px; font-family: 'Consolas', 'Monaco', monospace; resize: none; margin: 8px 0; }
+#json-panel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; max-width: calc(100vw - 24px); max-height: 76vh; overflow-y: auto; display: none; flex-direction: column; }
+#json-panel textarea { width: 100%; height: 220px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(100, 180, 255, 0.2); border-radius: 6px; color: #aaddff; padding: 10px; font-size: 11px; font-family: 'Consolas', 'Monaco', monospace; resize: vertical; margin: 8px 0; }
+#json-panel input[type="text"], #json-panel input[type="password"] { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(100, 180, 255, 0.2); border-radius: 6px; color: #ddeeff; padding: 7px 8px; font-size: 11px; font-family: inherit; margin: 4px 0 6px; }
 .json-btn-row { display: flex; gap: 8px; }
 .json-btn { flex: 1; background: linear-gradient(135deg, #1a3a5c, #2a5a8c); border: none; border-radius: 6px; color: #fff; padding: 8px; font-size: 11px; cursor: pointer; letter-spacing: 1px; }
 .json-btn.secondary { background: linear-gradient(135deg, #3a2a2a, #5a3a3a); }
 .json-btn:hover { opacity: 0.9; }
+.github-save-btn { width: 100%; margin-top: 4px; background: linear-gradient(135deg, #245b3a, #2e8b57); }
+.github-save-status { color: #99bbcc; font-size: 10px; line-height: 1.4; margin-top: 6px; word-break: break-word; }
 
 #toggle-row { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; }
 .toggle-btn { background: rgba(10, 15, 30, 0.85); border: 1px solid rgba(100, 180, 255, 0.25); border-radius: 8px; color: #aaddff; padding: 8px 14px; font-size: 11px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
@@ -252,8 +255,14 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
     <div class="json-btn-row">
       <button class="json-btn" onclick="exportJSON()">📤 ΕΞΑΓΩΓΗ</button>
       <button class="json-btn secondary" onclick="importJSON()">📥 ΕΙΣΑΓΩΓΗ</button>
-      <button class="json-btn secondary" onclick="downloadJSON()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+      <button class="json-btn secondary" onclick="downloadJSON()">⬇️ ΛΗΨΗ JSON</button>
     </div>
+    <div class="section-label">Συλλογική μνήμη — όνομα τάξης:</div>
+    <input id="memory-name" type="text" placeholder="π.χ. Β2 — 5ο ΓΕΛ Σερρών" autocomplete="off">
+    <div class="section-label">GitHub token εκπαιδευτικού:</div>
+    <input id="github-token" type="password" placeholder="Fine-grained token με Contents: write" autocomplete="off">
+    <button class="json-btn github-save-btn" onclick="saveMemoryToGitHub()">☁️ ΑΠΟΘΗΚΕΥΣΗ ΣΤΟ GITHUB</button>
+    <div id="github-save-status" class="github-save-status">Το token χρησιμοποιείται μόνο στη συνεδρία και δεν γράφεται στο JSON.</div>
   </div>
 
   <div id="stats" class="hud-panel">
@@ -1020,11 +1029,111 @@ window.setAnim = function(animName) { const asset = state.selectedAsset; if (!as
 window.removeAssetById = function(id) { const asset = state.assets.find(a => a.id === id); if (asset) removeAsset(asset); };
 
 // ========== JSON IMPORT/EXPORT ==========
-function buildJSON() { return { template: { version: "1.0", regions: ["base","trunk","arms","head","periphery","core"], visualRules: { lighting: "intensity_per_contributions", color: "category_mapping", glow: "documentation_threshold", inscriptions: "primary_source_text" } }, instance: { class: "B2", subject: "Μέγας Βασίλειος", year: 2026, createdAt: new Date().toISOString() }, regions: Object.fromEntries(Object.entries(regionsData).map(([key, data]) => [key, { name: data.name, contributions: data.contributions, docStrength: data.docStrength, category: data.category, label: data.label }])), contributions: state.contributions, assets: state.assets.map(a => ({ id: a.id, name: a.name, type: a.type, url: a.url, scale: a.userScale, position: a.userPos, rotation: a.userRot, animation: a.anim })) }; }
+function buildJSON(memoryName) { return { template: { version: "1.0", regions: ["base","trunk","arms","head","periphery","core"], visualRules: { lighting: "intensity_per_contributions", color: "category_mapping", glow: "documentation_threshold", inscriptions: "primary_source_text" } }, instance: { class: memoryName || "B2", subject: "Μέγας Βασίλειος", year: 2026, createdAt: new Date().toISOString() }, regions: Object.fromEntries(Object.entries(regionsData).map(([key, data]) => [key, { name: data.name, contributions: data.contributions, docStrength: data.docStrength, category: data.category, label: data.label }])), contributions: state.contributions, assets: state.assets.map(a => ({ id: a.id, name: a.name, type: a.type, url: a.url, scale: a.userScale, position: a.userPos, rotation: a.userRot, animation: a.anim })) }; }
 window.toggleJsonPanel = function() { const panel = document.getElementById('json-panel'); const isVisible = panel.style.display === 'flex'; ['contrib-panel','asset-panel','bishop-panel','json-panel','asset-edit-panel'].forEach(pid => { document.getElementById(pid).style.display = 'none'; }); if (!isVisible) { panel.style.display = 'flex'; document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2); } };
 window.exportJSON = function() { document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2); };
 window.importJSON = function() { try { const data = JSON.parse(document.getElementById('json-editor').value); if (data.contributions) state.contributions = data.contributions; if (data.regions) { Object.entries(data.regions).forEach(([key, rd]) => { if (regionsData[key]) { regionsData[key].contributions = rd.contributions || 0; regionsData[key].docStrength = rd.docStrength || 0; regionsData[key].category = rd.category || null; if (rd.contributions > 0) applyVisualUpdate(key); } }); } updateStats(); updateLegend(); alert('✅ JSON φορτώθηκε επιτυχώς!'); } catch (e) { alert('❌ Σφάλμα JSON: ' + e.message); } };
 window.downloadJSON = function() { const json = JSON.stringify(buildJSON(), null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ISP_${regionsData.head.name || 'Sculpture'}_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
+
+const MEMORY_REPOSITORY = 'dporpatonelis-crypto/interactive-sculpture';
+const MEMORY_DIRECTORY = 'collective-memories';
+
+function setGitHubSaveStatus(message, isError) {
+  const status = document.getElementById('github-save-status');
+  if (!status) return;
+  status.textContent = message;
+  status.style.color = isError ? '#ff9b9b' : '#99bbcc';
+}
+
+function slugifyMemoryName(name) {
+  const normalized = name.trim().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const slug = normalized.replace(/[^a-zA-Z0-9\u0370-\u03FF\u1F00-\u1FFF]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'class-memory-' + Date.now();
+}
+
+function encodeGitHubPath(path) {
+  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+}
+
+function encodeUtf8Base64(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function memoryJSON(name) {
+  const data = buildJSON(name);
+  data.collective_memory = {
+    name,
+    savedAt: new Date().toISOString(),
+    source: 'interactive-sculpture'
+  };
+  return data;
+}
+
+window.saveMemoryToGitHub = async function() {
+  const name = document.getElementById('memory-name').value.trim();
+  const token = document.getElementById('github-token').value.trim();
+  if (!name) {
+    setGitHubSaveStatus('⚠️ Γράψε πρώτα το όνομα της τάξης.', true);
+    return;
+  }
+  if (!token) {
+    setGitHubSaveStatus('⚠️ Χρειάζεται GitHub token για αποθήκευση.', true);
+    return;
+  }
+
+  const filePath = MEMORY_DIRECTORY + '/' + slugifyMemoryName(name) + '.json';
+  const url = 'https://api.github.com/repos/' + MEMORY_REPOSITORY + '/contents/' + encodeGitHubPath(filePath);
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    Authorization: 'Bearer ' + token,
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  const data = memoryJSON(name);
+  const body = {
+    message: 'memory: save ' + name,
+    content: encodeUtf8Base64(JSON.stringify(data, null, 2)),
+    branch: 'main'
+  };
+
+  setGitHubSaveStatus('⏳ Αποθήκευση στο GitHub…', false);
+  try {
+    const existing = await fetch(url, { headers });
+    if (existing.ok) {
+      const existingData = await existing.json();
+      body.sha = existingData.sha;
+    } else if (existing.status !== 404) {
+      throw new Error('Έλεγχος αρχείου απέτυχε (HTTP ' + existing.status + ').');
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const errorData = await response.json();
+        detail = errorData.message ? ' ' + errorData.message : '';
+      } catch (_) {}
+      throw new Error('Το GitHub δεν αποδέχθηκε την αποθήκευση (HTTP ' + response.status + ').' + detail);
+    }
+
+    const result = await response.json();
+    document.getElementById('json-editor').value = JSON.stringify(data, null, 2);
+    const action = body.sha ? 'Ενημερώθηκε' : 'Δημιουργήθηκε';
+    setGitHubSaveStatus('✅ ' + action + ': ' + filePath + (result.commit?.sha ? ' · commit ' + result.commit.sha.slice(0, 7) : ''), false);
+  } catch (error) {
+    setGitHubSaveStatus('❌ ' + error.message, true);
+  }
+};
+
 
 // ========== VR ==========
 // Tune these two numbers to change where the player spawns relative to the sculpture
