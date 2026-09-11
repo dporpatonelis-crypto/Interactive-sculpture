@@ -159,14 +159,35 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
 
 <div id="hud">
   <div id="top-bar" class="hud-panel">
-    <div class="main-title">🏛️ Interactive Sculpture — Bishop</div>
-    <div class="sub-title">Β2 — Μέγας Βασίλειος — 2026</div>
+    <div class="main-title" id="lesson-main-title">🏛️ Interactive Sculpture</div>
+    <div class="sub-title" id="lesson-sub-title">Ελεύθερη τάξη — οι μαθητές γράφουν απευθείας</div>
+    <div id="audio-status" class="hud-text" style="margin-top:5px;color:#99bbcc;">🔇 WAV: ανενεργό</div>
   </div>
 
   <div id="toggle-row">
     <button class="toggle-btn" id="btn-assets" onclick="togglePanel('asset-panel')">📦 3D Assets</button>
     <button class="toggle-btn" id="btn-json" onclick="toggleJsonPanel()">📋 JSON</button>
+    <button class="toggle-btn" id="btn-scenario" onclick="togglePanel('scenario-panel')">🎬 Σενάριο</button>
+    <button class="toggle-btn" id="btn-audio" onclick="unlockLessonAudio()">🔊 Ενεργοποίηση ήχου</button>
     <button class="toggle-btn" id="btn-bishop" onclick="togglePanel('bishop-panel')">♟️ Bishop</button>
+  </div>
+
+  <div id="scenario-panel" class="hud-panel">
+    <div class="header">
+      <span class="region-name">🎬 Σενάριο μαθήματος</span>
+      <button class="close-btn" onclick="closePanel('scenario-panel')">×</button>
+    </div>
+    <div class="section-label">Το βασικό σενάριο αφήνει τους μαθητές να γράφουν απευθείας.</div>
+    <select id="scenario-select" onchange="applyScenarioSelection(this.value)" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(100,180,255,0.2);border-radius:6px;color:#ddeeff;padding:7px 8px;font-size:12px;">
+      <option value="classroom">Interactive Sculpture — ελεύθερη τάξη</option>
+      <option value="basileiada">Βασιλειάδα — έμπρακτη φιλανθρωπία</option>
+    </select>
+    <div id="scenario-description" class="hud-text" style="margin-top:8px;"></div>
+    <div class="bishop-buttons" style="margin-top:8px;">
+      <button class="submit-btn" onclick="downloadScenarioJSON()">⬇️ ΛΗΨΗ</button>
+      <button class="submit-btn" onclick="saveScenarioToGitHub()">☁️ GITHUB</button>
+    </div>
+    <div id="scenario-save-status" class="hud-text" style="margin-top:6px;">Το GITHUB χρησιμοποιεί το token του JSON panel.</div>
   </div>
 
   <div id="bishop-panel" class="hud-panel">
@@ -317,7 +338,8 @@ const state = {
   selectedRegion: null, selectedCategory: 'theological',
   contributions: [], autoRotate: false, hoveredRegion: null,
   selectedAsset: null, assets: [], foundDiscoveries: new Set(), hoveredMarker: null,
-  bishop: { root: null, mixer: null, actions: {}, clips: [], active: null, ready: false }
+  bishop: { root: null, mixer: null, actions: {}, clips: [], active: null, ready: false },
+  voiceAssetId: null
 };
 
 const regionsData = {
@@ -338,28 +360,324 @@ const categoryColors = {
 // a JSON file on GitHub Pages — one object per team/inscription. To wire that up later, replace
 // the DISCOVERIES constant below with `await loadDiscoveries()` and point the fetch URL at your
 // published JSON (same pattern as the rest of your Sacred Blueprint pipeline).
-const DISCOVERIES = [
-  {
-    id: 'basil-philanthropy',
-    region: 'arms',            // which sculpture region is dark until this is found
-    team: 'Ομάδα Α',
-    category: 'ethical',       // picks the reveal color from categoryColors
-    markerPosition: { x: 1.7, y: 1.15, z: -2.1 },  // where the hidden inscription sits — off to the side, behind the sculpture
-    shortText: '"...ὅσον δύνασαι ἀγαθοποίει..."',
-    fullText: 'Ο Μέγας Βασίλειος δίδασκε πως η φιλανθρωπία δεν είναι επιλογή αλλά χρέος: όποιος έχει παραπάνω απ᾽ όσο χρειάζεται, οφείλει να το μοιραστεί με όσους δεν έχουν τίποτα.',
-    source: 'Βασίλειος Καισαρείας, Ομιλία «Εις τους πλουτούντας»'
+
+const SCENARIO_AUDIO_BASE = 'https://raw.githubusercontent.com/dporpatonelis-crypto/light-up-legacy/main/public/audio/freedom/';
+
+const SCENARIOS = {
+  classroom: {
+    id: 'classroom',
+    title: 'Interactive Sculpture',
+    subtitle: 'Ελεύθερη τάξη — οι μαθητές γράφουν απευθείας',
+    subject: 'Συλλογικό γλυπτό',
+    year: 2026,
+    description: 'Κενό εργαστήριο: κάθε μαθητής γράφει απευθείας στο γλυπτό, χωρίς έτοιμες ανακαλύψεις ή μόνιμο πρόσωπο.',
+    showBishop: false,
+    discoveries: [],
+    audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
+  },
+  basileiada: {
+    id: 'basileiada',
+    title: 'Βασιλειάδα — έμπρακτη φιλανθρωπία',
+    subtitle: 'Μέγας Βασίλειος · Καισάρεια · 2026',
+    subject: 'Μέγας Βασίλειος',
+    year: 2026,
+    description: 'Προαιρετικό σενάριο με μία κρυφή ανακάλυψη για τη φιλανθρωπία του Βασιλείου. Ενεργοποιεί και ένα πιλοτικό WAV στην περιοχή «Χέρια».',
+    showBishop: true,
+    discoveries: [
+      {
+        id: 'basil-philanthropy',
+        region: 'arms',
+        team: 'Ομάδα Α',
+        category: 'ethical',
+        markerPosition: { x: 1.7, y: 1.15, z: -2.1 },
+        shortText: '"...ὅσον δύνασαι ἀγαθοποίει..."',
+        fullText: 'Ο Μέγας Βασίλειος δίδασκε πως η φιλανθρωπία δεν είναι επιλογή αλλά χρέος: όποιος έχει παραπάνω απ᾽ όσο χρειάζεται, οφείλει να το μοιραστεί με όσους δεν έχουν τίποτα.',
+        source: 'Βασίλειος Καισαρείας, Ομιλία «Εις τους πλουτούντας»'
+      }
+    ],
+    audio: {
+      enabled: true,
+      oncePerRegion: true,
+      volume: 0.82,
+      rewards: {
+        arms: {
+          url: SCENARIO_AUDIO_BASE + 'eleftheria_social_final.wav',
+          label: 'Πιλοτική ηχητική επιβράβευση · κοινωνική προσφορά'
+        }
+      }
+    }
   }
-  // Add one object per team/region here. Each unique `region` value starts fully dark
-  // (see setRegionDark below) until its matching discovery is found.
-];
+};
+
+const requestedScenarioId = new URLSearchParams(window.location.search).get('scenario');
+const activeScenarioId = Object.prototype.hasOwnProperty.call(SCENARIOS, requestedScenarioId) ? requestedScenarioId : 'classroom';
+const activeScenario = SCENARIOS[activeScenarioId];
+const lessonAudioConfig = activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} };
+const DISCOVERIES = activeScenario.discoveries || [];
 
 async function loadDiscoveries() {
-  // Drop-in replacement for the DISCOVERIES constant above once the Sheet → GitHub Pages
-  // pipeline publishes real data:
-  // const res = await fetch('https://raw.githubusercontent.com/USERNAME/REPO/main/discoveries.json');
-  // return await res.json();
   return DISCOVERIES;
 }
+
+function createVoiceReward() {
+  const REGION_KEYS = ['base', 'trunk', 'arms', 'head', 'periphery', 'core'];
+  const MORPH_GROUPS = {
+    mouthOpen: ['mouthOpen', 'Mouth_Open', 'mouth_open'],
+    jawOpen: ['jawOpen', 'Jaw_Open', 'jaw_open'],
+    sil: ['viseme_sil', 'Viseme_Sil', 'viseme_SIL'],
+    aa: ['viseme_aa', 'Viseme_AA', 'viseme_AA'],
+    ee: ['viseme_ee', 'Viseme_EE', 'viseme_EE'],
+    oo: ['viseme_oh', 'Viseme_OH', 'viseme_oh', 'viseme_O'],
+    uu: ['viseme_oo', 'Viseme_OO', 'viseme_oo', 'viseme_U']
+  };
+
+  let config = { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} };
+  let audioContext = null;
+  let analyser = null;
+  let analyserConnected = false;
+  let timeData = null;
+  let frequencyData = null;
+  let currentAudio = null;
+  let currentSource = null;
+  let targetNode = null;
+  let rewardedRegions = new Set();
+
+  function setStatus(message, isError) {
+    const node = document.getElementById('audio-status');
+    if (!node) return;
+    node.textContent = message;
+    node.style.color = isError ? '#ff9b9b' : '#99bbcc';
+  }
+
+  function normalize(nextConfig) {
+    const next = nextConfig || {};
+    const rewards = {};
+    REGION_KEYS.forEach(region => {
+      if (next.rewards && next.rewards[region] && next.rewards[region].url) {
+        rewards[region] = {
+          url: next.rewards[region].url,
+          label: next.rewards[region].label || 'WAV reward'
+        };
+      }
+    });
+    return {
+      enabled: !!next.enabled && Object.keys(rewards).length > 0,
+      oncePerRegion: next.oncePerRegion !== false,
+      volume: Number.isFinite(Number(next.volume)) ? Math.max(0, Math.min(1, Number(next.volume))) : 0.82,
+      rewards
+    };
+  }
+
+  function getAudioContext() {
+    if (!audioContext) {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextCtor) {
+        audioContext = new AudioContextCtor();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.72;
+        timeData = new Uint8Array(analyser.fftSize);
+        frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      }
+    }
+    return audioContext;
+  }
+
+  function resetMorphs() {
+    if (!targetNode || !targetNode.morphTargetDictionary || !targetNode.morphTargetInfluences) return;
+    Object.keys(targetNode.morphTargetDictionary).forEach(name => {
+      if (/mouth|jaw|viseme/i.test(name)) {
+        targetNode.morphTargetInfluences[targetNode.morphTargetDictionary[name]] = 0;
+      }
+    });
+  }
+
+  function findMorphIndex(names) {
+    if (!targetNode || !targetNode.morphTargetDictionary) return -1;
+    for (const name of names) {
+      if (Object.prototype.hasOwnProperty.call(targetNode.morphTargetDictionary, name)) {
+        return targetNode.morphTargetDictionary[name];
+      }
+    }
+    const lowerNames = names.map(name => name.toLowerCase());
+    const match = Object.keys(targetNode.morphTargetDictionary).find(name => lowerNames.includes(name.toLowerCase()));
+    return match ? targetNode.morphTargetDictionary[match] : -1;
+  }
+
+  function setMorph(names, value) {
+    const index = findMorphIndex(names);
+    if (index >= 0 && targetNode.morphTargetInfluences) {
+      targetNode.morphTargetInfluences[index] = Math.max(0, Math.min(1, value));
+    }
+  }
+
+  function attachIfSuitable(root) {
+    if (!root || typeof root.traverse !== 'function') return false;
+    let candidate = null;
+    root.traverse(node => {
+      if (!candidate && node.morphTargetDictionary && node.morphTargetInfluences) candidate = node;
+    });
+    if (!candidate) {
+      setStatus('🔊 WAV ενεργό · το GLB δεν έχει facial morph targets για lipsync', false);
+      return false;
+    }
+    targetNode = candidate;
+    setStatus('🎙️ WAV + lipsync συνδέθηκαν στο GLB', false);
+    return true;
+  }
+
+  function detach() {
+    resetMorphs();
+    targetNode = null;
+  }
+
+  async function unlock() {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') await ctx.resume();
+    if (config.enabled) setStatus('🔊 WAV ενεργό · ο επόμενος φωτισμός θα παίξει ήχο', false);
+    return !!ctx;
+  }
+
+  function stopCurrent() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    if (currentSource) {
+      try { currentSource.disconnect(); } catch (_) {}
+      currentSource = null;
+    }
+    resetMorphs();
+  }
+
+  function play(region) {
+    const reward = config.rewards[region];
+    if (!config.enabled || !reward) return;
+    if (config.oncePerRegion && rewardedRegions.has(region)) return;
+
+    stopCurrent();
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
+    audio.src = reward.url;
+    audio.volume = config.volume;
+    currentAudio = audio;
+    if (config.oncePerRegion) rewardedRegions.add(region);
+
+    const ctx = getAudioContext();
+    if (ctx && analyser) {
+      try {
+        currentSource = ctx.createMediaElementSource(audio);
+        currentSource.connect(analyser);
+        if (!analyserConnected) {
+          analyser.connect(ctx.destination);
+          analyserConnected = true;
+        }
+      } catch (error) {
+        console.warn('Lipsync analyser unavailable:', error);
+      }
+    }
+
+    audio.addEventListener('ended', () => {
+      if (currentAudio === audio) {
+        resetMorphs();
+        setStatus('✅ WAV ολοκληρώθηκε', false);
+        currentAudio = null;
+      }
+    });
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(error => {
+        if (config.oncePerRegion) rewardedRegions.delete(region);
+        setStatus('⚠️ Πάτησε πρώτα «Ενεργοποίηση ήχου» για να παίξει το WAV', true);
+        console.warn('WAV playback failed:', error);
+      });
+    }
+  }
+
+  function update() {
+    if (!currentAudio || currentAudio.paused || !analyser || !targetNode) return;
+    analyser.getByteTimeDomainData(timeData);
+    analyser.getByteFrequencyData(frequencyData);
+
+    let sum = 0;
+    for (let i = 0; i < timeData.length; i++) {
+      const normalized = (timeData[i] - 128) / 128;
+      sum += normalized * normalized;
+    }
+    const rms = Math.sqrt(sum / timeData.length);
+    let weighted = 0;
+    let total = 0;
+    for (let i = 0; i < frequencyData.length; i++) {
+      weighted += i * frequencyData[i];
+      total += frequencyData[i];
+    }
+    const centroid = total ? weighted / total / frequencyData.length : 0;
+    const strength = Math.max(0, Math.min(1, (rms - 0.025) * 11 + total / (frequencyData.length * 255) * 0.35));
+    const jaw = Math.max(0, Math.min(1, strength * 0.82));
+    setMorph(MORPH_GROUPS.mouthOpen, strength);
+    setMorph(MORPH_GROUPS.jawOpen, jaw);
+    setMorph(MORPH_GROUPS.sil, 1 - strength);
+    setMorph(MORPH_GROUPS.aa, centroid < 0.24 ? strength * 0.85 : 0);
+    setMorph(MORPH_GROUPS.ee, centroid >= 0.24 && centroid < 0.43 ? strength * 0.8 : 0);
+    setMorph(MORPH_GROUPS.oo, centroid >= 0.43 && centroid < 0.62 ? strength * 0.72 : 0);
+    setMorph(MORPH_GROUPS.uu, centroid >= 0.62 ? strength * 0.68 : 0);
+  }
+
+  function configure(nextConfig) {
+    config = normalize(nextConfig);
+    rewardedRegions = new Set();
+    if (!config.enabled) setStatus('🔇 WAV ανενεργό · ενεργοποίησε το σενάριο Βασιλειάδα για ήχο', false);
+    else setStatus('🔒 WAV έτοιμο · πάτησε «Ενεργοποίηση ήχου»', false);
+  }
+
+  return { configure, unlock, play, update, attachIfSuitable, detach };
+}
+
+const voiceReward = createVoiceReward();
+
+function applyScenarioChrome() {
+  document.title = activeScenario.title;
+  const title = document.getElementById('lesson-main-title');
+  const subtitle = document.getElementById('lesson-sub-title');
+  if (title) title.textContent = '🏛️ ' + activeScenario.title;
+  if (subtitle) subtitle.textContent = activeScenario.subtitle;
+
+  const select = document.getElementById('scenario-select');
+  if (select) {
+    select.value = activeScenarioId;
+    select.options.length = 0;
+    Object.values(SCENARIOS).forEach(scenario => {
+      const option = document.createElement('option');
+      option.value = scenario.id;
+      option.textContent = scenario.title;
+      select.appendChild(option);
+    });
+    select.value = activeScenarioId;
+  }
+  const description = document.getElementById('scenario-description');
+  if (description) description.textContent = activeScenario.description;
+
+  const bishopButton = document.getElementById('btn-bishop');
+  const bishopPanel = document.getElementById('bishop-panel');
+  if (bishopButton) bishopButton.style.display = activeScenario.showBishop ? '' : 'none';
+  if (bishopPanel && !activeScenario.showBishop) bishopPanel.style.display = 'none';
+
+  voiceReward.configure(activeScenario.audio);
+}
+
+window.unlockLessonAudio = async function() {
+  await voiceReward.unlock();
+};
+
+window.applyScenarioSelection = function(id) {
+  if (!SCENARIOS[id]) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('scenario', id);
+  window.location.href = url.toString();
+};
+
+applyScenarioChrome();
 
 // ========== SCENE SETUP ==========
 const canvas = document.getElementById('vr-canvas');
@@ -583,6 +901,7 @@ function revealDiscovery(markerObj) {
   regionsData[disc.region].category = disc.category;
 
   showRevealPanel(markerObj, disc);
+  voiceReward.play(disc.region);
   burstAt(markerObj.mesh.position, colorHex);
   markerObj.mesh.visible = false; markerObj.light.intensity = 0;
 
@@ -675,7 +994,7 @@ window.addEventListener('resize', () => { camera.aspect = window.innerWidth / wi
 window.closePanel = function(id) { document.getElementById(id).style.display = 'none'; if (id === 'contrib-panel') state.selectedRegion = null; if (id === 'asset-edit-panel') state.selectedAsset = null; };
 window.togglePanel = function(id) {
   const panel = document.getElementById(id); const isVisible = panel.style.display === 'block';
-  ['contrib-panel', 'asset-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel'].forEach(pid => { document.getElementById(pid).style.display = 'none'; });
+  ['contrib-panel', 'asset-panel', 'scenario-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel'].forEach(pid => { document.getElementById(pid).style.display = 'none'; });
   if (!isVisible) panel.style.display = 'block';
 };
 window.openPanel = function(id) { ['contrib-panel', 'asset-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel'].forEach(pid => { if (pid !== id) document.getElementById(pid).style.display = 'none'; }); document.getElementById(id).style.display = 'block'; };
@@ -689,8 +1008,11 @@ window.submitContribution = function() {
   const docScore = hasSource ? Math.min(source.length / 10, 10) : 1;
   const contribution = { id: Date.now(), region, text, source: source || '(χωρίς πηγή — αδύναμη τεκμηρίωση)', category: state.selectedCategory, docScore, timestamp: new Date().toISOString() };
   state.contributions.push(contribution);
-  const rd = regionsData[region]; rd.contributions++; rd.docStrength += docScore; rd.category = state.selectedCategory;
+  const rd = regionsData[region];
+  const firstLight = rd.contributions === 0 && !!lessonAudioConfig.rewards[region];
+  rd.contributions++; rd.docStrength += docScore; rd.category = state.selectedCategory;
   applyVisualUpdate(region);
+  if (firstLight) voiceReward.play(region);
   if (hasSource) {
     const mesh = regionMeshes[region]; let pos;
     if (Array.isArray(mesh)) pos = mesh[0].position.clone().add(new THREE.Vector3(0, 0.6, 0));
@@ -905,6 +1227,9 @@ function loadAsset(url, name, ext) {
 
     scene.add(mesh);
 
+    const voiceReady = lessonAudioConfig.enabled && !state.voiceAssetId && voiceReward.attachIfSuitable(mesh);
+    if (voiceReady) state.voiceAssetId = assetId;
+
     // ===== ELEGANT SPOTLIGHT =====
     const spotLight = new THREE.SpotLight(0xffddaa, 3, 10, Math.PI / 6, 0.5, 1);
     spotLight.position.set(x, 5, z); spotLight.target = mesh; spotLight.castShadow = true;
@@ -939,7 +1264,7 @@ function loadAsset(url, name, ext) {
       id: assetId, name, type: ext.toUpperCase(), mesh, outline, label,
       spotLight, glowMesh, url, baseScale,
       userScale: 1.0, userPos: { x, y: 0.2, z }, userRot: 0, anim: 'idle',
-      boxSize, boxCenter
+      voiceReady, boxSize, boxCenter
     };
     state.assets.push(asset); updateStats(); updateAssetList();
   };
@@ -971,11 +1296,15 @@ window.removeAsset = function(asset) {
   if (!asset) return;
   scene.remove(asset.mesh); scene.remove(asset.outline); scene.remove(asset.label);
   scene.remove(asset.spotLight); scene.remove(asset.glowMesh);
+  if (state.voiceAssetId === asset.id) {
+    voiceReward.detach();
+    state.voiceAssetId = null;
+  }
   state.assets = state.assets.filter(a => a.id !== asset.id);
   state.selectedAsset = null; updateStats(); updateAssetList(); closePanel('asset-edit-panel');
 };
 
-function updateAssetList() { const container = document.getElementById('asset-list'); container.innerHTML = ''; state.assets.forEach(asset => { const div = document.createElement('div'); div.className = 'asset-item'; div.innerHTML = `<span class="asset-type">${asset.type}</span><span class="asset-name">${asset.name}</span><button class="asset-btn edit" onclick="openAssetEditById(${asset.id})">⚙️</button><button class="asset-btn" onclick="removeAssetById(${asset.id})">🗑️</button>`; container.appendChild(div); }); }
+function updateAssetList() { const container = document.getElementById('asset-list'); container.innerHTML = ''; state.assets.forEach(asset => { const div = document.createElement('div'); div.className = 'asset-item'; const mic = asset.voiceReady ? ' 🎙️' : ''; div.innerHTML = `<span class="asset-type">${asset.type}</span><span class="asset-name">${asset.name}${mic}</span><button class="asset-btn edit" onclick="openAssetEditById(${asset.id})">⚙️</button><button class="asset-btn" onclick="removeAssetById(${asset.id})">🗑️</button>`; container.appendChild(div); }); }
 window.openAssetEditById = function(id) { const asset = state.assets.find(a => a.id === id); if (asset) openAssetEditPanel(asset); };
 
 window.openAssetEditPanel = function(asset) {
@@ -1029,11 +1358,188 @@ window.setAnim = function(animName) { const asset = state.selectedAsset; if (!as
 window.removeAssetById = function(id) { const asset = state.assets.find(a => a.id === id); if (asset) removeAsset(asset); };
 
 // ========== JSON IMPORT/EXPORT ==========
-function buildJSON(memoryName) { return { template: { version: "1.0", regions: ["base","trunk","arms","head","periphery","core"], visualRules: { lighting: "intensity_per_contributions", color: "category_mapping", glow: "documentation_threshold", inscriptions: "primary_source_text" } }, instance: { class: memoryName || "B2", subject: "Μέγας Βασίλειος", year: 2026, createdAt: new Date().toISOString() }, regions: Object.fromEntries(Object.entries(regionsData).map(([key, data]) => [key, { name: data.name, contributions: data.contributions, docStrength: data.docStrength, category: data.category, label: data.label }])), contributions: state.contributions, assets: state.assets.map(a => ({ id: a.id, name: a.name, type: a.type, url: a.url, scale: a.userScale, position: a.userPos, rotation: a.userRot, animation: a.anim })) }; }
-window.toggleJsonPanel = function() { const panel = document.getElementById('json-panel'); const isVisible = panel.style.display === 'flex'; ['contrib-panel','asset-panel','bishop-panel','json-panel','asset-edit-panel'].forEach(pid => { document.getElementById(pid).style.display = 'none'; }); if (!isVisible) { panel.style.display = 'flex'; document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2); } };
-window.exportJSON = function() { document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2); };
-window.importJSON = function() { try { const data = JSON.parse(document.getElementById('json-editor').value); if (data.contributions) state.contributions = data.contributions; if (data.regions) { Object.entries(data.regions).forEach(([key, rd]) => { if (regionsData[key]) { regionsData[key].contributions = rd.contributions || 0; regionsData[key].docStrength = rd.docStrength || 0; regionsData[key].category = rd.category || null; if (rd.contributions > 0) applyVisualUpdate(key); } }); } updateStats(); updateLegend(); alert('✅ JSON φορτώθηκε επιτυχώς!'); } catch (e) { alert('❌ Σφάλμα JSON: ' + e.message); } };
-window.downloadJSON = function() { const json = JSON.stringify(buildJSON(), null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ISP_${regionsData.head.name || 'Sculpture'}_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
+
+function buildJSON(memoryName) {
+  const data = {
+    template: {
+      version: "1.0",
+      regions: ["base", "trunk", "arms", "head", "periphery", "core"],
+      visualRules: {
+        lighting: "intensity_per_contributions",
+        color: "category_mapping",
+        glow: "documentation_threshold",
+        inscriptions: "primary_source_text"
+      }
+    },
+    instance: {
+      class: memoryName || "B2",
+      subject: activeScenario.subject,
+      year: activeScenario.year,
+      createdAt: new Date().toISOString()
+    },
+    scenario: { id: activeScenario.id, title: activeScenario.title },
+    regions: Object.fromEntries(Object.entries(regionsData).map(([key, data]) => [key, {
+      name: data.name,
+      contributions: data.contributions,
+      docStrength: data.docStrength,
+      category: data.category,
+      label: data.label
+    }])),
+    contributions: state.contributions,
+    assets: state.assets.map(a => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      url: a.url,
+      scale: a.userScale,
+      position: a.userPos,
+      rotation: a.userRot,
+      animation: a.anim,
+      voiceReady: !!a.voiceReady
+    }))
+  };
+  if (lessonAudioConfig.enabled) data.audio = lessonAudioConfig;
+  return data;
+}
+
+window.toggleJsonPanel = function() {
+  const panel = document.getElementById('json-panel');
+  const isVisible = panel.style.display === 'flex';
+  ['contrib-panel', 'asset-panel', 'scenario-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel'].forEach(pid => {
+    document.getElementById(pid).style.display = 'none';
+  });
+  if (!isVisible) {
+    panel.style.display = 'flex';
+    document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2);
+  }
+};
+
+window.exportJSON = function() {
+  document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2);
+};
+
+window.importJSON = function() {
+  try {
+    const data = JSON.parse(document.getElementById('json-editor').value);
+    if (data.contributions) state.contributions = data.contributions;
+    if (data.regions) {
+      Object.entries(data.regions).forEach(([key, rd]) => {
+        if (regionsData[key]) {
+          regionsData[key].contributions = rd.contributions || 0;
+          regionsData[key].docStrength = rd.docStrength || 0;
+          regionsData[key].category = rd.category || null;
+          if (rd.contributions > 0) applyVisualUpdate(key);
+        }
+      });
+    }
+    if (data.audio) voiceReward.configure(data.audio);
+    updateStats();
+    updateLegend();
+    alert('✅ JSON φορτώθηκε επιτυχώς!');
+  } catch (e) {
+    alert('❌ Σφάλμα JSON: ' + e.message);
+  }
+};
+
+window.downloadJSON = function() {
+  const json = JSON.stringify(buildJSON(), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ISP_' + (regionsData.head.name || 'Sculpture') + '_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+function buildScenarioJSON() {
+  return {
+    type: 'interactive-sculpture-scenario',
+    version: '1.0',
+    id: activeScenario.id,
+    title: activeScenario.title,
+    subtitle: activeScenario.subtitle,
+    description: activeScenario.description,
+    subject: activeScenario.subject,
+    year: activeScenario.year,
+    showBishop: activeScenario.showBishop,
+    discoveries: activeScenario.discoveries || [],
+    audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
+  };
+}
+
+function setScenarioSaveStatus(message, isError) {
+  const status = document.getElementById('scenario-save-status');
+  if (!status) return;
+  status.textContent = message;
+  status.style.color = isError ? '#ff9b9b' : '#99bbcc';
+}
+
+window.downloadScenarioJSON = function() {
+  const json = JSON.stringify(buildScenarioJSON(), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'scenario_' + activeScenario.id + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setScenarioSaveStatus('✅ Το σενάριο κατέβηκε ως scenario_' + activeScenario.id + '.json', false);
+};
+
+window.saveScenarioToGitHub = async function() {
+  const token = document.getElementById('github-token').value.trim();
+  if (!token) {
+    setScenarioSaveStatus('⚠️ Χρειάζεται GitHub token στο JSON panel.', true);
+    return;
+  }
+
+  const filePath = 'scenarios/' + activeScenario.id + '.json';
+  const url = 'https://api.github.com/repos/' + MEMORY_REPOSITORY + '/contents/' + encodeGitHubPath(filePath);
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    Authorization: 'Bearer ' + token,
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  const data = buildScenarioJSON();
+  const body = {
+    message: 'scenario: save ' + activeScenario.id,
+    content: encodeUtf8Base64(JSON.stringify(data, null, 2)),
+    branch: 'main'
+  };
+
+  setScenarioSaveStatus('⏳ Αποθήκευση σεναρίου στο GitHub…', false);
+  try {
+    const existing = await fetch(url, { headers });
+    if (existing.ok) {
+      const existingData = await existing.json();
+      body.sha = existingData.sha;
+    } else if (existing.status !== 404) {
+      throw new Error('Έλεγχος σεναρίου απέτυχε (HTTP ' + existing.status + ').');
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const errorData = await response.json();
+        detail = errorData.message ? ' ' + errorData.message : '';
+      } catch (_) {}
+      throw new Error('Το GitHub δεν αποδέχθηκε το σενάριο (HTTP ' + response.status + ').' + detail);
+    }
+
+    const result = await response.json();
+    const action = body.sha ? 'Ενημερώθηκε' : 'Δημιουργήθηκε';
+    setScenarioSaveStatus('✅ ' + action + ': ' + filePath + (result.commit?.sha ? ' · commit ' + result.commit.sha.slice(0, 7) : ''), false);
+  } catch (error) {
+    setScenarioSaveStatus('❌ ' + error.message, true);
+  }
+};
 
 const MEMORY_REPOSITORY = 'dporpatonelis-crypto/interactive-sculpture';
 const MEMORY_DIRECTORY = 'collective-memories';
@@ -1318,6 +1824,7 @@ const clock = new THREE.Clock();
 function animate() {
   const dt = clock.getDelta();
   if (state.bishop.mixer) state.bishop.mixer.update(dt);
+  voiceReward.update();
   const time = clock.elapsedTime;
   if (regionMeshes.periphery) { regionMeshes.periphery.rotation.y = time * 0.1; regionMeshes.periphery.children[1].rotation.z = time * 0.15; regionMeshes.periphery.children[2].rotation.x = time * 0.08; }
   const pos = particles.geometry.attributes.position.array;
@@ -1419,7 +1926,7 @@ function animate() {
 
 // ========== INIT ==========
 updateLegend(); updateStats();
-loadEmbeddedBishop();
+if (activeScenario.showBishop) loadEmbeddedBishop();
 // IMPORTANT: renderer.setAnimationLoop (not requestAnimationFrame) is what makes this
 // loop run inside a WebXR session — this was the reason the headset view froze/never loaded.
 renderer.setAnimationLoop(animate);
