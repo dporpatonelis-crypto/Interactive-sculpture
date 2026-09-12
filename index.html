@@ -180,9 +180,11 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
     <div class="section-label">Το βασικό σενάριο αφήνει τους μαθητές να γράφουν απευθείας.</div>
     <select id="scenario-select" onchange="applyScenarioSelection(this.value)" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(100,180,255,0.2);border-radius:6px;color:#ddeeff;padding:7px 8px;font-size:12px;">
       <option value="classroom">Interactive Sculpture — ελεύθερη τάξη</option>
+      <option value="slides-discovery">Google Slides — ανακαλύψεις τάξης</option>
       <option value="basileiada">Βασιλειάδα — έμπρακτη φιλανθρωπία</option>
     </select>
     <div id="scenario-description" class="hud-text" style="margin-top:8px;"></div>
+      <div id="slide-discovery-status" class="hud-text" style="margin-top:6px;"></div>
     <div class="bishop-buttons" style="margin-top:8px;">
       <button class="submit-btn" onclick="downloadScenarioJSON()">⬇️ ΛΗΨΗ</button>
       <button class="submit-btn" onclick="saveScenarioToGitHub()">☁️ GITHUB</button>
@@ -406,17 +408,58 @@ const SCENARIOS = {
         }
       }
     }
+  },
+  'slides-discovery': {
+    id: 'slides-discovery',
+    title: 'Ανακαλύψεις της τάξης',
+    subtitle: 'Google Slides · τα πεδία γίνονται κρυφά ευρήματα',
+    subject: 'δόγμα και βίωμα',
+    year: 2026,
+    description: 'Ξεχωριστό Discovery Mode: κάθε μη κενό πεδίο της πρώτης διαφάνειας γίνεται ένα κρυφό εύρημα. Οι μαθητές το αναζητούν στον χώρο και βλέπουν το πλήρες γραπτό τους.',
+    showBishop: false,
+    discoveries: [],
+    audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   }
 };
 
-const requestedScenarioId = new URLSearchParams(window.location.search).get('scenario');
-const activeScenarioId = Object.prototype.hasOwnProperty.call(SCENARIOS, requestedScenarioId) ? requestedScenarioId : 'classroom';
+const queryParams = new URLSearchParams(window.location.search);
+const requestedScenarioId = queryParams.get('scenario');
+const requestedMode = queryParams.get('mode');
+const selectedScenarioId = requestedMode === 'slides-discovery' ? 'slides-discovery' : requestedScenarioId;
+const activeScenarioId = Object.prototype.hasOwnProperty.call(SCENARIOS, selectedScenarioId) ? selectedScenarioId : 'classroom';
 const activeScenario = SCENARIOS[activeScenarioId];
 const lessonAudioConfig = activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} };
-const DISCOVERIES = activeScenario.discoveries || [];
+const SLIDE_DISCOVERY_URL = 'data/slides-discoveries.json';
+let DISCOVERIES = activeScenario.discoveries || [];
+let discoverySnapshotSignature = '';
+let appliedDiscoverySignature = '';
 
-async function loadDiscoveries() {
-  return DISCOVERIES;
+function setSlideDiscoveryStatus(message, isError) {
+  const status = document.getElementById('slide-discovery-status');
+  if (!status) return;
+  status.textContent = message || '';
+  status.style.color = isError ? '#ff9b9b' : '#99bbcc';
+}
+
+async function loadDiscoveries(force) {
+  if (activeScenarioId !== 'slides-discovery') return DISCOVERIES;
+  try {
+    const response = await fetch(SLIDE_DISCOVERY_URL + '?ts=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    const next = Array.isArray(data) ? data : (data.discoveries || []);
+    const signature = JSON.stringify(next);
+    if (!force && signature === discoverySnapshotSignature) return DISCOVERIES;
+    discoverySnapshotSignature = signature;
+    DISCOVERIES = next.filter(item => item && item.region && item.fullText);
+    if (data.topic) activeScenario.subtitle = 'Google Slides · ' + data.topic;
+    setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + DISCOVERIES.length + ' ευρήματα', false);
+    return DISCOVERIES;
+  } catch (error) {
+    setSlideDiscoveryStatus('⚠️ Δεν φορτώθηκε το Google Slides snapshot ακόμη.', true);
+    console.warn('slides-discoveries.json not available yet:', error);
+    return DISCOVERIES;
+  }
 }
 
 function createVoiceReward() {
@@ -627,7 +670,7 @@ function createVoiceReward() {
   function configure(nextConfig) {
     config = normalize(nextConfig);
     rewardedRegions = new Set();
-    if (!config.enabled) setStatus('🔇 WAV ανενεργό · ενεργοποίησε το σενάριο Βασιλειάδα για ήχο', false);
+    if (!config.enabled) setStatus('🔇 WAV ανενεργό · το σενάριο δεν έχει ηχητική επιβράβευση', false);
     else setStatus('🔒 WAV έτοιμο · πάτησε «Ενεργοποίηση ήχου»', false);
   }
 
@@ -916,7 +959,63 @@ function initDiscoveries(list) {
     createHiddenMarker(disc);
   });
 }
-initDiscoveries(DISCOVERIES);
+let discoveryDataStarted = false;
+
+function clearDiscoveries() {
+  discoveryMarkers.forEach(marker => {
+    if (marker.revealPanel) {
+      sculptureGroup.remove(marker.revealPanel);
+      if (marker.revealPanel.material && marker.revealPanel.material.map) marker.revealPanel.material.map.dispose();
+      if (marker.revealPanel.material) marker.revealPanel.material.dispose();
+    }
+    sculptureGroup.remove(marker.mesh);
+    scene.remove(marker.light);
+    if (marker.mesh.geometry) marker.mesh.geometry.dispose();
+    if (marker.mesh.material) marker.mesh.material.dispose();
+  });
+  discoveryMarkers.length = 0;
+  state.foundDiscoveries.clear();
+  activeReveals.length = 0;
+  for (let i = activeBursts.length - 1; i >= 0; i--) {
+    const burst = activeBursts[i];
+    scene.remove(burst.pts);
+    if (burst.pts.geometry) burst.pts.geometry.dispose();
+    if (burst.pts.material) burst.pts.material.dispose();
+  }
+  activeBursts.length = 0;
+}
+
+function applyDiscoverySnapshot(list) {
+  const next = Array.isArray(list) ? list : [];
+  const signature = JSON.stringify(next);
+  if (signature === appliedDiscoverySignature) {
+    if (typeof drawMenu === 'function' && menuAttached) drawMenu();
+    return;
+  }
+  appliedDiscoverySignature = signature;
+  clearDiscoveries();
+  DISCOVERIES = next;
+  initDiscoveries(DISCOVERIES);
+  if (activeScenarioId === 'slides-discovery') {
+    applyScenarioChrome();
+    setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + DISCOVERIES.length + ' ευρήματα', false);
+  }
+  if (typeof drawMenu === 'function' && menuAttached) drawMenu();
+}
+
+async function startDiscoveryData() {
+  const initial = await loadDiscoveries(false);
+  applyDiscoverySnapshot(initial);
+  if (activeScenarioId === 'slides-discovery' && !discoveryDataStarted) {
+    discoveryDataStarted = true;
+    setInterval(async () => {
+      const next = await loadDiscoveries(true);
+      applyDiscoverySnapshot(next);
+    }, 30000);
+  }
+}
+
+startDiscoveryData();
 
 // ========== ENVIRONMENT ==========
 const floor = new THREE.Mesh(new THREE.CircleGeometry(20, 64), new THREE.MeshStandardMaterial({ color: 0x0a0a15, roughness: 0.9, metalness: 0.1 }));
@@ -1463,7 +1562,7 @@ function buildScenarioJSON() {
     subject: activeScenario.subject,
     year: activeScenario.year,
     showBishop: activeScenario.showBishop,
-    discoveries: activeScenario.discoveries || [],
+    discoveries: DISCOVERIES || [],
     audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   };
 }
