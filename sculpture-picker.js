@@ -78,7 +78,7 @@ export function installSculpturePicker({ getConfig, change, download }) {
     entries = [{ id:'legacy', name:'Αρχικό αφαιρετικό γλυπτό', description:'Η αρχική γεωμετρική μορφή με τις έξι περιοχές.', sculpture:null }];
     populate(); apply.disabled = true; status.textContent = 'Φόρτωση διαθέσιμων μορφών…';
     try {
-      const response = await fetch(new URL('./sculptures.json', import.meta.url));
+      const response = await fetch(new URL('./sculptures.json?ts=' + Date.now(), import.meta.url), { cache: 'no-store' });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const catalog = await response.json();
       const ids = new Set(['legacy','current']);
