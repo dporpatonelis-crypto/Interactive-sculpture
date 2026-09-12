@@ -358,7 +358,7 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { installSculpturePicker } from './sculpture-picker.js?v=2';
-import { createSculptureModel, meshesOf, rememberMaterials } from './sculpture-model.js?v=2';
+import { createSculptureModel, heartAnchorPosition, meshesOf, rememberMaterials } from './sculpture-model.js?v=3';
 
 // ========== STATE ==========
 const state = {
@@ -890,6 +890,8 @@ const sculptureModel = createSculptureModel({
         regionLights[key].position.copy(bounds.getCenter(new THREE.Vector3()));
       }
     }
+    const heart = root ? heartAnchorPosition(root, sculptureGroup) : null;
+    coreMesh.position.y = coreLight.position.y = heart?.y ?? 2.5;
     clearHover();
     state.selectedRegion = null;
     window.closePanel?.('contrib-panel');
