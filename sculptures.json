@@ -6,7 +6,7 @@
       "name": "Bishop — Επίσκοπος",
       "description": "Εγκεκριμένη αντιστοίχιση: κεφαλή με μίτρα, κορμός με άμφια, χέρια με μανίκια και ράβδο. Τα facial morph targets ενεργοποιούν lipsync όταν το WAV είναι διαθέσιμο.",
       "sculpture": {
-        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/models/bishop-regions-draft.glb",
+        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/public/models/bishop-regions-draft.glb",
         "height": 4.4,
         "regions": {
           "head": [
@@ -26,7 +26,7 @@
       "name": "Dimitris — ανθρώπινο avatar",
       "description": "Προετοιμασμένη avatar μορφή: κεφαλή με πρόσωπο, κορμός με ρούχα και χέρια με μανίκια. Τα facial morph targets ενεργοποιούν lipsync όταν το WAV είναι διαθέσιμο.",
       "sculpture": {
-        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/models/dimitris-regions-draft.glb",
+        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/public/models/dimitris-regions-draft.glb",
         "height": 4.4,
         "regions": {
           "head": [
@@ -46,7 +46,7 @@
       "name": "Ready Player Me — άνδρας με γραβάτα",
       "description": "Προετοιμασμένο Ready Player Me avatar: κεφαλή, κορμός με ένδυση και χέρια σε στάση Τ. Τα facial morph targets ενεργοποιούν lipsync όταν το WAV είναι διαθέσιμο.",
       "sculpture": {
-        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/models/ready-player-me-regions-draft.glb",
+        "url": "https://dporpatonelis-crypto.github.io/light-up-legacy/public/models/ready-player-me-regions-draft.glb",
         "height": 4.4,
         "regions": {
           "head": [
