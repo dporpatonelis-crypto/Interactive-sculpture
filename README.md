@@ -23,7 +23,7 @@ Live εφαρμογή: [Google Slides Discovery mode](https://dporpatonelis-cryp
 `base`, `trunk`, `arms`, `head`, `periphery`, `core` αντιστοιχούν στις έξι περιοχές του γλυπτού. Τα πέντε γνωστά πεδία του πρώτου Slide αντιστοιχούν σε `head`, `arms`, `trunk`, `base`, `core`· επιπλέον textbox μπορεί να χρησιμοποιήσει το prefix `[light-up:periphery]`.
 ## Επιλογή γλυπτού και lipsync
 
-Το κουμπί **🏛️ Γλυπτό** ανοίγει τον ίδιο επιλογέα που χρησιμοποιεί το Light Up Legacy. Ο κατάλογος περιλαμβάνει την αφαιρετική μορφή, τον Bishop, το Dimitris avatar και το Ready Player Me avatar. Τα GLB παραμένουν στη βιβλιοθήκη του Light Up Legacy και φορτώνονται με ασφαλή αντιστοίχιση των περιοχών `head`, `trunk` και `arms` — δεν αντιγράφονται στο repository.
+Το κουμπί **🏛️ Γλυπτό** ανοίγει τον ίδιο επιλογέα που χρησιμοποιεί το Light Up Legacy. Ο κατάλογος περιλαμβάνει την αφαιρετική μορφή, τον Bishop, το Dimitris avatar και το Ready Player Me avatar. Τα GLB παραμένουν στη βιβλιοθήκη του Light Up Legacy και φορτώνονται με ασφαλή αντιστοίχιση των περιοχών `head`, `trunk`, `arms`, `base`, `periphery` και `core`. Τα υπάρχοντα avatars χρησιμοποιούν τρεις περιοχές· το Δέντρο της Αποκάλυψης χρησιμοποιεί και τις έξι, με τις θεματικές ετικέτες του.
 
 Το **lipsync** λειτουργεί όταν το επιλεγμένο GLB έχει facial morph targets. Ο Web Audio analyser μετατρέπει την ένταση και το φασματικό κέντρο του WAV σε mouth/jaw/viseme κινήσεις. Πάτησε πρώτα **🔊 Ενεργοποίηση ήχου**· στο `slides-discovery` το WAV είναι απενεργοποιημένο από το σενάριο, ενώ στο `basileiada` εμφανίζεται η αντίστοιχη ηχητική επιβράβευση. Η ένδειξη στην κορυφή αναφέρει αν συνδέθηκε lipsync ή αν το GLB είναι μόνο audio-only.
 
