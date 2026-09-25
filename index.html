@@ -908,6 +908,17 @@ let supportCanvasUserTexture = null;
 let supportCanvasBrightness = 1;
 let supportCanvasLight = null;
 
+function canvasUnlockFactor() {
+  if (DISCOVERIES.length === 0) return activeScenarioId === 'slides-discovery' ? 0 : 1;
+  return DISCOVERIES.every(discovery => state.foundDiscoveries.has(discovery.id)) ? 1 : 0;
+}
+
+function updateCanvasIllumination() {
+  const factor = canvasUnlockFactor();
+  for (const material of supportCanvasMaterials) material.emissiveIntensity = 0.45 * supportCanvasBrightness * factor;
+  if (supportCanvasLight) supportCanvasLight.intensity = 2.2 * supportCanvasBrightness * factor;
+}
+
 const fallbackRegions = {
   head: regionMeshes.head,
   trunk: regionMeshes.trunk,
@@ -966,18 +977,61 @@ function addInscription(text, position, region) {
 const discoveryMarkers = []; // { mesh, light, data, found, revealPanel }
 const activeReveals = []; // material/light tween state, processed each frame in animate()
 const activeBursts = []; // little particle bursts for the "born from light" moment
+const discoveryOriginalMaterials = new Map(); // mesh -> original material colors before the hidden state
+const discoveryLightColor = 0xffefd6; // soft warm white keeps the sculpture's natural palette visible
+
+function meshesInRegion(region) {
+  const rm = regionMeshes[region];
+  if (!rm) return [];
+  if (Array.isArray(rm)) return rm.filter(mesh => mesh?.isMesh);
+  if (rm.isMesh) return [rm];
+  if (rm.isGroup) {
+    const meshes = [];
+    rm.traverse(node => { if (node.isMesh) meshes.push(node); });
+    return meshes;
+  }
+  return [];
+}
+
+function materialList(mesh) {
+  return Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+}
+
+function restoreDiscoveryMaterials() {
+  discoveryOriginalMaterials.forEach((originals, mesh) => {
+    materialList(mesh).forEach((material, index) => {
+      const original = originals[index];
+      if (!material || !original) return;
+      if (material.color && original.color) material.color.copy(original.color);
+      if (material.emissive && original.emissive) material.emissive.copy(original.emissive);
+      if ('emissiveIntensity' in material) material.emissiveIntensity = original.emissiveIntensity;
+    });
+  });
+  discoveryOriginalMaterials.clear();
+}
 
 // A region with an un-found discovery starts completely dark (near-black, no glow, light off) —
 // regionLights already default to intensity 0, so this only needs to flatten the material.
 function setRegionDark(region) {
-  const rm = regionMeshes[region]; if (!rm) return;
-  const meshes = [];
-  if (Array.isArray(rm)) meshes.push(...rm); else if (rm.isGroup) rm.traverse(c => { if (c.isMesh) meshes.push(c); }); else meshes.push(rm);
-  meshes.forEach(mesh => updateMeshMaterials(mesh, material => {
-    if (material.color) material.color.setHex(0x050505);
-    if (material.emissive) material.emissive.setHex(0x000000);
-    if ('emissiveIntensity' in material) material.emissiveIntensity = 0;
-  }));
+  meshesInRegion(region).forEach(mesh => {
+    const materials = materialList(mesh);
+    if (!discoveryOriginalMaterials.has(mesh)) {
+      discoveryOriginalMaterials.set(mesh, materials.map(material => ({
+        color: material?.color?.clone() || null,
+        emissive: material?.emissive?.clone() || null,
+        emissiveIntensity: material?.emissiveIntensity ?? 0
+      })));
+    }
+    const darkMaterials = materials.map(material => {
+      if (!material) return material;
+      const dark = material.clone();
+      if (dark.color) dark.color.setHex(0x050505);
+      if (dark.emissive) dark.emissive.setHex(0x000000);
+      if ('emissiveIntensity' in dark) dark.emissiveIntensity = 0;
+      return dark;
+    });
+    mesh.material = Array.isArray(mesh.material) ? darkMaterials : darkMaterials[0];
+  });
 }
 
 function createHiddenMarker(disc) {
@@ -1048,43 +1102,44 @@ function burstAt(position, colorHex) {
   activeBursts.push({ pts, vel, start: clock.getElapsedTime(), duration: 1.2 });
 }
 
-// Φάση 3: Η Αποκάλυψη — lights the target region from dark to its category color, shows the
-// full inscription text as a world-space panel, and pops a small particle burst.
+// Φάση 3: Η Αποκάλυψη — restores the region's original material colors, adds a soft neutral
+// light, shows the full inscription text, and unlocks the canvas after the final discovery.
 function revealDiscovery(markerObj) {
   if (markerObj.found) return;
   markerObj.found = true;
   const disc = markerObj.data;
   state.foundDiscoveries.add(disc.id);
-  const colorHex = categoryColors[disc.category] || 0xffffff;
-
-  const rm = regionMeshes[disc.region];
-  if (rm) {
-    const meshes = [];
-    if (Array.isArray(rm)) meshes.push(...rm); else if (rm.isGroup) rm.traverse(c => { if (c.isMesh) meshes.push(c); }); else meshes.push(rm);
-    meshes.forEach(mesh => updateMeshMaterials(mesh, material => {
+  meshesInRegion(disc.region).forEach(mesh => {
+    const originals = discoveryOriginalMaterials.get(mesh) || [];
+    materialList(mesh).forEach((material, index) => {
+      if (!material) return;
+      const original = originals[index];
       const fromColor = material.color?.clone() || new THREE.Color(0x050505);
-      const fromEmissive = Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 0;
+      const fromEmissiveColor = material.emissive?.clone() || new THREE.Color(0x000000);
       activeReveals.push({
         mesh,
         material,
         fromColor,
-        toColor: new THREE.Color(colorHex),
-        fromEmissive,
-        toEmissive: 2.2,
+        toColor: original?.color?.clone() || fromColor.clone(),
+        fromEmissiveColor,
+        toEmissiveColor: original?.emissive?.clone() || fromEmissiveColor.clone(),
+        fromEmissive: Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 0,
+        toEmissive: Number.isFinite(original?.emissiveIntensity) ? original.emissiveIntensity : 0,
         startTime: clock.getElapsedTime(),
         duration: 2.2
       });
-    }));
-  }
+    });
+  });
   if (regionLights[disc.region]) {
-    regionLights[disc.region].color.setHex(colorHex);
-    activeReveals.push({ light: regionLights[disc.region], fromIntensity: 0, toIntensity: 3, startTime: clock.getElapsedTime(), duration: 2.2 });
+    regionLights[disc.region].color.setHex(discoveryLightColor);
+    activeReveals.push({ light: regionLights[disc.region], fromIntensity: regionLights[disc.region].intensity, toIntensity: 0.85, startTime: clock.getElapsedTime(), duration: 2.2 });
   }
   regionsData[disc.region].category = disc.category;
+  updateCanvasIllumination();
 
   showRevealPanel(markerObj, disc);
   voiceReward.play(disc.region);
-  burstAt(markerObj.mesh.position, colorHex);
+  burstAt(markerObj.mesh.position, discoveryLightColor);
   markerObj.mesh.visible = false; markerObj.light.intensity = 0;
 
   updateLegend();
@@ -1115,6 +1170,8 @@ function clearDiscoveries() {
   discoveryMarkers.length = 0;
   state.foundDiscoveries.clear();
   activeReveals.length = 0;
+  restoreDiscoveryMaterials();
+  updateCanvasIllumination();
   for (let i = activeBursts.length - 1; i >= 0; i--) {
     const burst = activeBursts[i];
     scene.remove(burst.pts);
@@ -1347,10 +1404,9 @@ function updateCanvasMaterials(texture) {
     material.map = texture;
     material.emissiveMap = texture;
     material.emissive.setRGB(1, 1, 1);
-    material.emissiveIntensity = 0.45 * supportCanvasBrightness;
     material.needsUpdate = true;
   }
-  if (supportCanvasLight) supportCanvasLight.intensity = 2.2 * supportCanvasBrightness;
+  updateCanvasIllumination();
 }
 
 window.setCanvasBrightness = function(value) {
@@ -1436,13 +1492,13 @@ async function loadSupportCanvas() {
       supportCanvasDefaultMaps.push({ map: canvasMaterial.map, emissiveMap: canvasMaterial.emissiveMap });
       canvasMaterial.emissive.setRGB(1, 1, 1);
       canvasMaterial.emissiveMap = canvasMaterial.map;
-      canvasMaterial.emissiveIntensity = 0.45 * supportCanvasBrightness;
       canvasMaterial.needsUpdate = true;
     });
     scene.add(supportCanvas);
-    supportCanvasLight = new THREE.PointLight(0xffbb68, 2.2 * supportCanvasBrightness, 5, 2);
+    supportCanvasLight = new THREE.PointLight(0xffbb68, 0, 5, 2);
     supportCanvasLight.position.set(0, 2.0, 0.55);
     supportCanvas.add(supportCanvasLight);
+    updateCanvasIllumination();
     positionSupportCanvas();
     status.textContent = '✅ Ο καμβάς είναι έτοιμος · η αρχική εικόνα είναι ενσωματωμένη στο GLB.';
     return supportCanvas;
@@ -2322,7 +2378,7 @@ function animate() {
     if (camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
   });
 
-  // Φάση 3: ease each region from dark to its reveal color/intensity over ~2 seconds.
+  // Φάση 3: ease each region back to its original materials over ~2 seconds.
   for (let i = activeReveals.length - 1; i >= 0; i--) {
     const r = activeReveals[i];
     const t = Math.min((time - r.startTime) / r.duration, 1);
@@ -2331,7 +2387,7 @@ function animate() {
       const material = r.material || (Array.isArray(r.mesh.material) ? r.mesh.material[0] : r.mesh.material);
       if (material) {
         if (material.color) material.color.lerpColors(r.fromColor, r.toColor, eased);
-        if (material.emissive) material.emissive.copy(r.toColor);
+        if (material.emissive) material.emissive.lerpColors(r.fromEmissiveColor, r.toEmissiveColor, eased);
         if ('emissiveIntensity' in material) {
           material.emissiveIntensity = r.fromEmissive + (r.toEmissive - r.fromEmissive) * eased;
         }
