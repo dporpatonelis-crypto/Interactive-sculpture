@@ -2,19 +2,19 @@
   "type": "interactive-sculpture-discovery-snapshot",
   "version": 1,
   "mode": "slides-discovery",
-  "topic": "ΧΡΟΝΟΛΟΓΙΟ / ΠΕΝΤΕ ΣΤΑΘΜΟΙ",
+  "topic": "ΟΝΤΟΛΟΓΙΚΟΣ ΧΑΡΤΗΣ ΤΗΣ ΑΠΟΚΑΛΥΨΗΣ",
   "source": {
     "type": "google-slides",
     "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-    "slideObjectId": "timeline_response_board_v1",
-    "syncedAt": "2026-09-25T20:15:07.046Z"
+    "slideObjectId": "h1dcf0c72ee7ccd5d_0_0",
+    "syncedAt": "2026-09-25T20:23:29.759Z"
   },
   "discoveries": [
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e13",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_0_13",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e13",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_0_13",
       "region": "head",
       "team": "Κεφαλή",
       "student": "",
@@ -25,16 +25,16 @@
         "y": 4.5,
         "z": -1.8
       },
-      "shortText": "ΣΤΑΘΜΟΣ 1 · 1ος αι. μ.Χ.\nΦαρισαϊσμός & Νόμος\nΕκτροπή: τυπολατρία, αυτοδικαίωση.\nΑντίδοτο: ζώσα σχέση, κενωτική αγάπη.",
-      "fullText": "ΣΤΑΘΜΟΣ 1 · 1ος αι. μ.Χ.\nΦαρισαϊσμός & Νόμος\nΕκτροπή: τυπολατρία, αυτοδικαίωση.\nΑντίδοτο: ζώσα σχέση, κενωτική αγάπη.",
+      "shortText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
+      "fullText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
       "source": "Google Slides · Κεφαλή",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e15",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_0_15",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e15",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_0_15",
       "region": "arms",
       "team": "Χέρια",
       "student": "",
@@ -45,16 +45,16 @@
         "y": 1.15,
         "z": -2.1
       },
-      "shortText": "ΣΤΑΘΜΟΣ 2 · 1ος–3ος αι. μ.Χ.\nΑυτοκρατορική Λατρεία\nΕκτροπή: λατρεία Αυτοκράτορα, πολιτική υποταγή.\nΑντίδοτο: ομολογία μαρτύρων· διάκριση Θεού–Καίσαρος.",
-      "fullText": "ΣΤΑΘΜΟΣ 2 · 1ος–3ος αι. μ.Χ.\nΑυτοκρατορική Λατρεία\nΕκτροπή: λατρεία Αυτοκράτορα, πολιτική υποταγή.\nΑντίδοτο: ομολογία μαρτύρων· διάκριση Θεού–Καίσαρος.",
+      "shortText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
+      "fullText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
       "source": "Google Slides · Χέρια",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e17",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_0_17",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e17",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_0_17",
       "region": "trunk",
       "team": "Κορμός",
       "student": "",
@@ -65,16 +65,16 @@
         "y": 2.15,
         "z": -2
       },
-      "shortText": "ΣΤΑΘΜΟΣ 3 · 4ος–7ος αι. μ.Χ.\nΧριστολογικές Διαμάχες\nΆκρα: έργα μόνο / αδράνεια · ΣΤ΄ Σύνοδος: δύο φυσικές θελήσεις & ενέργειες.\nΑντίδοτο: συνέργεια χάριτος + ελεύθερης ανταπόκρισης.",
-      "fullText": "ΣΤΑΘΜΟΣ 3 · 4ος–7ος αι. μ.Χ.\nΧριστολογικές Διαμάχες\nΆκρα: έργα μόνο / αδράνεια · ΣΤ΄ Σύνοδος: δύο φυσικές θελήσεις & ενέργειες.\nΑντίδοτο: συνέργεια χάριτος + ελεύθερης ανταπόκρισης.",
+      "shortText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
+      "fullText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
       "source": "Google Slides · Κορμός",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e19",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_0_19",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e19",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_0_19",
       "region": "base",
       "team": "Βάση",
       "student": "",
@@ -85,16 +85,16 @@
         "y": 0.75,
         "z": -2.1
       },
-      "shortText": "ΣΤΑΘΜΟΣ 4 · 4ος–8ος αι. μ.Χ.\nΑυτοκρατορικός Παρεμβατισμός & Εικονομαχία\nΕκτροπή: δόγμα ως κρατικό εργαλείο και σκοπιμότητα.\nΠατέρες: «ου βασιλέων εστί νομοθετεῖν τη Εκκλησία».",
-      "fullText": "ΣΤΑΘΜΟΣ 4 · 4ος–8ος αι. μ.Χ.\nΑυτοκρατορικός Παρεμβατισμός & Εικονομαχία\nΕκτροπή: δόγμα ως κρατικό εργαλείο και σκοπιμότητα.\nΠατέρες: «ου βασιλέων εστί νομοθετεῖν τη Εκκλησία».",
+      "shortText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
+      "fullText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
       "source": "Google Slides · Βάση",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e21",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_0_21",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e21",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_0_21",
       "region": "core",
       "team": "Εσωτερικός Πυρήνας",
       "student": "",
@@ -105,16 +105,16 @@
         "y": 2.5,
         "z": 1.7
       },
-      "shortText": "ΣΤΑΘΜΟΣ 5 · 20ός αι.\nΕθνοφυλετισμός & Μαζοποίηση\nΕκτροπή: εθνικό ιδεολόγημα, φανατισμός / μαζοποίηση.\nΑντίδοτο: οικουμενική αγάπη, ελευθερία της Υπόστασης.",
-      "fullText": "ΣΤΑΘΜΟΣ 5 · 20ός αι.\nΕθνοφυλετισμός & Μαζοποίηση\nΕκτροπή: εθνικό ιδεολόγημα, φανατισμός / μαζοποίηση.\nΑντίδοτο: οικουμενική αγάπη, ελευθερία της Υπόστασης.",
+      "shortText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
+      "fullText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
       "source": "Google Slides · Εσωτερικός Πυρήνας",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:timeline_response_board_v1_e25",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:h1dcf0c72ee7ccd5d_periphery_text",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "timeline_response_board_v1_e25",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_periphery_text",
       "region": "periphery",
       "team": "Περιφέρεια",
       "student": "",
@@ -125,10 +125,10 @@
         "y": 3.2,
         "z": -1.6
       },
-      "shortText": "ΤΕΛΙΚΗ ΣΥΝΘΕΣΗ\nΑπό τα «ρήματα» στα «πράγματα»:\nμετοχή στην Αλήθεια, τήρηση εντολών,\nελευθερία του Προσώπου.",
-      "fullText": "ΤΕΛΙΚΗ ΣΥΝΘΕΣΗ\nΑπό τα «ρήματα» στα «πράγματα»:\nμετοχή στην Αλήθεια, τήρηση εντολών,\nελευθερία του Προσώπου.",
+      "shortText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
+      "fullText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
       "source": "Google Slides · Περιφέρεια",
-      "timestamp": "2026-09-25T20:15:07.046Z"
+      "timestamp": "2026-09-25T20:23:29.759Z"
     }
   ]
 }
