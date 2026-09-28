@@ -831,6 +831,27 @@ sculptureFillLight.position.set(0, 3, 4); scene.add(sculptureFillLight);
 const bishopFillLight = new THREE.PointLight(0xffbb88, 0.35, 4);
 bishopFillLight.position.set(7.05, 1.7, 3.0); scene.add(bishopFillLight);
 
+// A broad overhead reward light reveals the sculpture and the floor around it.
+// It stays off until the last classroom discovery unlocks the canvas.
+const discoverySpotlight = new THREE.SpotLight(0xffe8c8, 0, 0, Math.PI / 3, 0.55, 1);
+discoverySpotlight.position.set(0, 10, 2);
+discoverySpotlight.target.position.set(0, 2, 0);
+discoverySpotlight.visible = false;
+discoverySpotlight.castShadow = true;
+discoverySpotlight.shadow.mapSize.set(1024, 1024);
+discoverySpotlight.shadow.bias = -0.0001;
+scene.add(discoverySpotlight, discoverySpotlight.target);
+const DISCOVERY_SPOTLIGHT_INTENSITY = 18;
+
+function positionDiscoverySpotlight(root) {
+  const bounds = root ? new THREE.Box3().setFromObject(root) : null;
+  const center = bounds?.isEmpty() === false ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0, 2.5, 0);
+  const top = bounds?.isEmpty() === false ? bounds.max.y : 5;
+  discoverySpotlight.position.set(center.x, Math.max(top + 6, 10), center.z + 2);
+  discoverySpotlight.target.position.copy(center);
+  discoverySpotlight.target.updateMatrixWorld();
+}
+
 const regionLights = {};
 Object.keys(regionsData).forEach(key => {
   const light = new THREE.PointLight(regionsData[key].color, 0, 8);
@@ -953,6 +974,7 @@ const sculptureModel = createSculptureModel({
     }
     const heart = root ? heartAnchorPosition(root, sculptureGroup) : null;
     coreMesh.position.y = coreLight.position.y = heart?.y ?? 2.5;
+    positionDiscoverySpotlight(root);
     positionSupportCanvas(root);
     clearHover();
     state.selectedRegion = null;
@@ -1136,6 +1158,16 @@ function revealDiscovery(markerObj) {
   }
   regionsData[disc.region].category = disc.category;
   updateCanvasIllumination();
+  if (activeScenarioId === 'slides-discovery' && canvasUnlockFactor() === 1) {
+    discoverySpotlight.visible = true;
+    activeReveals.push({
+      light: discoverySpotlight,
+      fromIntensity: discoverySpotlight.intensity,
+      toIntensity: DISCOVERY_SPOTLIGHT_INTENSITY,
+      startTime: clock.getElapsedTime(),
+      duration: 2.2
+    });
+  }
 
   showRevealPanel(markerObj, disc);
   voiceReward.play(disc.region);
@@ -1170,6 +1202,8 @@ function clearDiscoveries() {
   discoveryMarkers.length = 0;
   state.foundDiscoveries.clear();
   activeReveals.length = 0;
+  discoverySpotlight.intensity = 0;
+  discoverySpotlight.visible = false;
   restoreDiscoveryMaterials();
   updateCanvasIllumination();
   for (let i = activeBursts.length - 1; i >= 0; i--) {
