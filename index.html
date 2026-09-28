@@ -986,7 +986,24 @@ const sculptureModel = createSculptureModel({
       }
     }
     const heart = root ? heartAnchorPosition(root, sculptureGroup) : null;
-    coreMesh.position.y = coreLight.position.y = heart?.y ?? 2.5;
+    // The fallback core sphere belongs to the abstract sculpture, not imported models.
+    // Models without a mapped core still receive the reward as light on their front surface.
+    coreMesh.visible = !root;
+    coreMesh.position.y = heart?.y ?? 2.5;
+    coreLight.position.copy(heart ?? coreMesh.position);
+    if (root && !modelConfig?.regions?.core) {
+      const bounds = new THREE.Box3().setFromObject(root);
+      if (!bounds.isEmpty()) {
+        const center = bounds.getCenter(new THREE.Vector3());
+        const lightPosition = new THREE.Vector3(
+          heart?.x ?? center.x,
+          heart?.y ?? bounds.min.y + (bounds.max.y - bounds.min.y) * 0.58,
+          bounds.max.z + 0.2
+        );
+        coreLight.position.copy(lightPosition);
+        regionLights.core.position.copy(lightPosition);
+      }
+    }
     positionDiscoverySpotlights(root);
     positionSupportCanvas(root);
     clearHover();
