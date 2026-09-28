@@ -8,8 +8,8 @@
     "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
     "presentationTitle": "δόγμα και βίωμα",
     "slideObjectId": "h1dcf0c72ee7ccd5d_0_0",
-    "slideNumber": 2,
-    "revisionId": "JSb4ON3wzp3u0Q"
+    "slideNumber": 1,
+    "revisionId": "MtTCuvQAlO4DBg"
   },
   "discoveries": [
     {
@@ -30,7 +30,7 @@
       "shortText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
       "fullText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
       "source": "Google Slides · Κεφαλή",
-      "timestamp": "2026-09-28T10:10:02.669Z"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     },
     {
       "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-arms",
@@ -50,7 +50,7 @@
       "shortText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
       "fullText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
       "source": "Google Slides · Χέρια",
-      "timestamp": "2026-09-28T10:10:02.669Z"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     },
     {
       "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-trunk",
@@ -70,7 +70,7 @@
       "shortText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
       "fullText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
       "source": "Google Slides · Κορμός",
-      "timestamp": "2026-09-28T10:10:02.669Z"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     },
     {
       "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-base",
@@ -90,7 +90,7 @@
       "shortText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
       "fullText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
       "source": "Google Slides · Βάση",
-      "timestamp": "2026-09-28T10:10:02.669Z"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     },
     {
       "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-core",
@@ -110,12 +110,13 @@
       "shortText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
       "fullText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
       "source": "Google Slides · Εσωτερικός Πυρήνας",
-      "timestamp": "2026-09-28T10:10:02.669Z"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     },
     {
       "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-periphery",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_periphery_text",
       "region": "periphery",
       "team": "Περιφέρεια",
       "student": "",
@@ -129,8 +130,7 @@
       "shortText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
       "fullText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
       "source": "Google Slides · Περιφέρεια",
-      "timestamp": "2026-09-28T10:10:02.669Z",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_periphery_text"
+      "timestamp": "2026-09-28T10:18:34.413Z"
     }
   ]
 }
