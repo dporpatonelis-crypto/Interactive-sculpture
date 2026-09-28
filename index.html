@@ -843,14 +843,27 @@ discoverySpotlight.shadow.bias = -0.0001;
 scene.add(discoverySpotlight, discoverySpotlight.target);
 const DISCOVERY_SPOTLIGHT_INTENSITY = 18;
 
-function positionDiscoverySpotlight(root) {
+// A focused light from below the front edge brings out the model's face and relief.
+const discoveryFrontSpotlight = new THREE.SpotLight(0xfff2e2, 0, 0, Math.PI / 5, 0.6, 1);
+discoveryFrontSpotlight.visible = false;
+scene.add(discoveryFrontSpotlight, discoveryFrontSpotlight.target);
+const DISCOVERY_FRONT_SPOTLIGHT_INTENSITY = 14;
+
+function positionDiscoverySpotlights(root) {
   const bounds = root ? new THREE.Box3().setFromObject(root) : null;
-  const center = bounds?.isEmpty() === false ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0, 2.5, 0);
-  const top = bounds?.isEmpty() === false ? bounds.max.y : 5;
+  const hasBounds = bounds && !bounds.isEmpty();
+  const center = hasBounds ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0, 2.5, 0);
+  const bottom = hasBounds ? bounds.min.y : 0;
+  const top = hasBounds ? bounds.max.y : 5;
+  const front = hasBounds ? bounds.max.z : 2.6;
   discoverySpotlight.position.set(center.x, Math.max(top + 6, 10), center.z + 2);
   discoverySpotlight.target.position.copy(center);
   discoverySpotlight.target.updateMatrixWorld();
+  discoveryFrontSpotlight.position.set(center.x, Math.max(bottom + 0.7, 0.7), front + 3.2);
+  discoveryFrontSpotlight.target.position.set(center.x, bottom + (top - bottom) * 0.68, center.z);
+  discoveryFrontSpotlight.target.updateMatrixWorld();
 }
+positionDiscoverySpotlights(null);
 
 const regionLights = {};
 Object.keys(regionsData).forEach(key => {
@@ -974,7 +987,7 @@ const sculptureModel = createSculptureModel({
     }
     const heart = root ? heartAnchorPosition(root, sculptureGroup) : null;
     coreMesh.position.y = coreLight.position.y = heart?.y ?? 2.5;
-    positionDiscoverySpotlight(root);
+    positionDiscoverySpotlights(root);
     positionSupportCanvas(root);
     clearHover();
     state.selectedRegion = null;
@@ -1160,13 +1173,13 @@ function revealDiscovery(markerObj) {
   updateCanvasIllumination();
   if (activeScenarioId === 'slides-discovery' && canvasUnlockFactor() === 1) {
     discoverySpotlight.visible = true;
-    activeReveals.push({
-      light: discoverySpotlight,
-      fromIntensity: discoverySpotlight.intensity,
-      toIntensity: DISCOVERY_SPOTLIGHT_INTENSITY,
-      startTime: clock.getElapsedTime(),
-      duration: 2.2
-    });
+    discoveryFrontSpotlight.visible = true;
+    for (const [light, intensity] of [
+      [discoverySpotlight, DISCOVERY_SPOTLIGHT_INTENSITY],
+      [discoveryFrontSpotlight, DISCOVERY_FRONT_SPOTLIGHT_INTENSITY]
+    ]) {
+      activeReveals.push({ light, fromIntensity: light.intensity, toIntensity: intensity, startTime: clock.getElapsedTime(), duration: 2.2 });
+    }
   }
 
   showRevealPanel(markerObj, disc);
@@ -1204,6 +1217,8 @@ function clearDiscoveries() {
   activeReveals.length = 0;
   discoverySpotlight.intensity = 0;
   discoverySpotlight.visible = false;
+  discoveryFrontSpotlight.intensity = 0;
+  discoveryFrontSpotlight.visible = false;
   restoreDiscoveryMaterials();
   updateCanvasIllumination();
   for (let i = activeBursts.length - 1; i >= 0; i--) {
