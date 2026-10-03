@@ -2,21 +2,21 @@
   "type": "interactive-sculpture-discovery-snapshot",
   "version": 1,
   "mode": "slides-discovery",
-  "topic": "ΟΝΤΟΛΟΓΙΚΟΣ ΧΑΡΤΗΣ ΤΗΣ ΑΠΟΚΑΛΥΨΗΣ",
+  "topic": "Δέντρο Τυπολογίας Π.Διαθήκης",
   "source": {
     "type": "google-slides",
     "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
     "presentationTitle": "δόγμα και βίωμα",
-    "slideObjectId": "h1dcf0c72ee7ccd5d_0_0",
+    "slideObjectId": "h1dcf0c72ee7ccd5d_10_25",
     "slideNumber": 1,
-    "revisionId": "MtTCuvQAlO4DBg"
+    "revisionId": "zWRvBnsFLK2E6Q"
   },
   "discoveries": [
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-head",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-head",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_0_13",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_38",
       "region": "head",
       "team": "Κεφαλή",
       "student": "",
@@ -27,16 +27,16 @@
         "y": 4.5,
         "z": -1.8
       },
-      "shortText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
-      "fullText": "Θεογνωσία / Γνώση του Θεού\nΟ τελικός σκοπός στον οποίο οδηγούν όλες οι θεοφάνειες: ο φωτισμός του νοός και η προσωπική ένωση με τον Θεό (θέωση).",
+      "shortText": "head → κορυφή / φωτεινός καρπός: Γνόφος Σινά → Άκτιστο Φως",
+      "fullText": "head → κορυφή / φωτεινός καρπός: Γνόφος Σινά → Άκτιστο Φως",
       "source": "Google Slides · Κεφαλή",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-arms",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-arms",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_0_15",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_40",
       "region": "arms",
       "team": "Χέρια",
       "student": "",
@@ -47,16 +47,16 @@
         "y": 1.15,
         "z": -2.1
       },
-      "shortText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
-      "fullText": "Άγιοι & Βίωμα\nΗ Αποκάλυψη μετατρέπεται σε ζώσα πράξη, μαρτυρία και μεταμόρφωση μέσα στον χρόνο.",
+      "shortText": "arms → δύο μεγάλοι κλάδοι: από τυπικές πράξεις και θυσίες προς άνοιγμα, προσφορά και φιλανθρωπία.",
+      "fullText": "arms → δύο μεγάλοι κλάδοι: από τυπικές πράξεις και θυσίες προς άνοιγμα, προσφορά και φιλανθρωπία.",
       "source": "Google Slides · Χέρια",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-trunk",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-trunk",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_0_17",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_42",
       "region": "trunk",
       "team": "Κορμός",
       "student": "",
@@ -67,16 +67,16 @@
         "y": 2.15,
         "z": -2
       },
-      "shortText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
-      "fullText": "Ενανθρώπηση του Χριστού\nΤο ιστορικό και θεολογικό κέντρο της Αποκάλυψης, όπου ο Αχώρητος χωρείται στην κτιστή φύση.",
+      "shortText": "trunk → κεντρικός κορμός: Νόμος → Ενανθρώπηση. Ο Νόμος κρατά και κατευθύνει την πορεία, αλλά ο κορμός καταλήγει σε κάτι ζωντανό.",
+      "fullText": "trunk → κεντρικός κορμός: Νόμος → Ενανθρώπηση. Ο Νόμος κρατά και κατευθύνει την πορεία, αλλά ο κορμός καταλήγει σε κάτι ζωντανό.",
       "source": "Google Slides · Κορμός",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-base",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-base",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_0_19",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_44",
       "region": "base",
       "team": "Βάση",
       "student": "",
@@ -87,16 +87,16 @@
         "y": 0.75,
         "z": -2.1
       },
-      "shortText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
-      "fullText": "Αγία Γραφή / Γραφές\nΤο καταγεγραμμένο θεμέλιο της Αποκάλυψης και η προοδευτική φανέρωση στην Παλαιά και Καινή Διαθήκη.",
+      "shortText": "base → ρίζες / κατώτερο μονοπάτι: Αβραάμ, έξοδος από την ειδωλολατρία, αρχή της πορείας.",
+      "fullText": "base → ρίζες / κατώτερο μονοπάτι: Αβραάμ, έξοδος από την ειδωλολατρία, αρχή της πορείας.",
       "source": "Google Slides · Βάση",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-core",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-core",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_0_21",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_46",
       "region": "core",
       "team": "Εσωτερικός Πυρήνας",
       "student": "",
@@ -107,16 +107,16 @@
         "y": 2.5,
         "z": 1.7
       },
-      "shortText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
-      "fullText": "Άκτιστες Ενέργειες του Θεού\nΗ άκτιστη πηγή της χάριτος. Ο Θεός παραμένει ακατάληπτος κατά την ουσία, αλλά γίνεται γνωστός, μεθεκτός και ορατός κατά τις ενέργειές Του.",
+      "shortText": "core → εσωτερικός φωτεινός πυρήνας στον κορμό: Παλαιά Διαθήκη ως υπόσχεση → Νέα Διαθήκη ως πραγματωμένη προσωπική σχέση, ελευθερία και Ευχαριστία",
+      "fullText": "core → εσωτερικός φωτεινός πυρήνας στον κορμό: Παλαιά Διαθήκη ως υπόσχεση → Νέα Διαθήκη ως πραγματωμένη προσωπική σχέση, ελευθερία και Ευχαριστία",
       "source": "Google Slides · Εσωτερικός Πυρήνας",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     },
     {
-      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:revelation-periphery",
+      "id": "slides:1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0:old-testament-typology-periphery",
       "syncSource": "google-slides:dogma-vioma",
       "presentationId": "1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0",
-      "slideObjectId": "h1dcf0c72ee7ccd5d_periphery_text",
+      "slideObjectId": "h1dcf0c72ee7ccd5d_10_50",
       "region": "periphery",
       "team": "Περιφέρεια",
       "student": "",
@@ -127,10 +127,10 @@
         "y": 3.2,
         "z": -1.6
       },
-      "shortText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
-      "fullText": "Κτίση και Ιστορία\nΟ υλικός χώρος και ο χρόνος που φιλοξενούν τις θεοφάνειες, τα σύμβολα και τις «γέφυρες» προς το Άκτιστο.",
+      "shortText": "periphery → εξωτερικοί κλάδοι / κύκλος που επεκτείνεται: Ισραήλ → Οικουμένη.",
+      "fullText": "periphery → εξωτερικοί κλάδοι / κύκλος που επεκτείνεται: Ισραήλ → Οικουμένη.",
       "source": "Google Slides · Περιφέρεια",
-      "timestamp": "2026-09-28T10:18:34.413Z"
+      "timestamp": "2026-10-03T15:37:53.785Z"
     }
   ]
 }
