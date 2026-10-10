@@ -129,7 +129,8 @@
       "description": "Ελαφρύ μοντέλο από Blender με έξι ακτινωτές περιοχές. Στις Ανακαλύψεις της τάξης, κάθε clue αποκαλύπτει μία ακτίνα και τροφοδοτεί την κεντρική φλόγα.",
       "sculpture": {
         "url": "./models/circular-table-regions.glb",
-        "height": 3.3,
+        "height": 2.2,
+        "groundY": 0,
         "regions": {
           "base": ["Table_sector_1"],
           "trunk": ["Table_sector_2"],

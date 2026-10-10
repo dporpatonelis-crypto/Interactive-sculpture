@@ -479,7 +479,7 @@ const TABLE_DISCOVERIES = TABLE_REGION_KEYS.map((region, index) => {
   };
 });
 const TABLE_SCULPTURE = {
-  url: './models/circular-table-regions.glb', height: 3.3,
+  url: './models/circular-table-regions.glb', height: 2.2, groundY: 0,
   regions: Object.fromEntries(TABLE_REGION_KEYS.map((key, index) => [key, [`Table_sector_${index + 1}`]])),
   regionLabels: Object.fromEntries(TABLE_REGION_KEYS.map((key, index) => [key, `Ακτίνα ${index + 1}`]))
 };
@@ -550,6 +550,15 @@ const SCENARIOS = {
     sculpture: TABLE_SCULPTURE,
     discoveries: [],
     revealTrigger: 'clue',
+    canvas: {
+      modelUrl: './models/tree-support-canvas.glb',
+      backgroundImage: './assets/sandals-call-background.png',
+      scale: 0.66,
+      title: 'ΥΜΝΟΣ ΣΤΟ ΑΓΙΟ ΠΝΕΥΜΑ',
+      inscriptionSource: 'hymn',
+      illuminateAfterAllClues: true,
+      visible: true
+    },
     hymn: { title: 'Ύμνος', text: '', audioUrl: '' },
     secondCycle: [],
     audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
@@ -568,6 +577,9 @@ function validateCircularTableScenario(data) {
   }
   if (!data.sculpture?.url || !Array.isArray(data.questions) || data.questions.length !== 6 || !data.hymn?.text) {
     throw new Error('Λείπουν το γλυπτό, οι έξι αντιστοιχίσεις ή ο ύμνος.');
+  }
+  if (!data.canvas?.modelUrl || !data.canvas?.backgroundImage || data.canvas.inscriptionSource !== 'hymn' || !data.canvas.illuminateAfterAllClues) {
+    throw new Error('Λείπουν οι ρυθμίσεις του καμβά με τον ύμνο.');
   }
   return data;
 }
@@ -874,7 +886,8 @@ function applyScenarioChrome() {
 
 function updateTableChrome() {
   document.getElementById('btn-table').style.display = tableModelSelected ? '' : 'none';
-  document.getElementById('btn-canvas').style.display = tableModelSelected ? 'none' : '';
+  const canvasAvailable = !tableModelSelected || Boolean(activeScenario.canvas);
+  document.getElementById('btn-canvas').style.display = canvasAvailable ? '' : 'none';
   document.getElementById('btn-audio').style.display = tableModelSelected ? 'none' : '';
   document.body.classList.toggle('circular-table-mode', tableModelSelected);
 }
@@ -1061,11 +1074,12 @@ let activeSculptureRoot = null;
 let supportCanvasMaterials = [];
 let supportCanvasDefaultMaps = [];
 let supportCanvasUserTexture = null;
+let supportCanvasScenarioTexture = null;
 let supportCanvasBrightness = 1;
 let supportCanvasLight = null;
 
 function canvasUnlockFactor() {
-  if (DISCOVERIES.length === 0) return activeScenarioId === 'slides-discovery' ? 0 : 1;
+  if (DISCOVERIES.length === 0) return activeScenarioId === 'slides-discovery' || activeScenario.canvas?.illuminateAfterAllClues ? 0 : 1;
   return DISCOVERIES.every(discovery => state.foundDiscoveries.has(discovery.id)) ? 1 : 0;
 }
 
@@ -1098,7 +1112,7 @@ const sculptureModel = createSculptureModel({
       camera.position.x += shift;
       controls.update();
     }
-    if (supportCanvas) supportCanvas.visible = !tableModelSelected;
+    if (supportCanvas) supportCanvas.visible = !tableModelSelected || Boolean(activeScenario.canvas?.visible);
     updateTableChrome();
     for (const [key, data] of Object.entries(regionsData)) {
       const fallback = defaultRegionLabels[key];
@@ -1151,7 +1165,7 @@ const sculptureModel = createSculptureModel({
       });
     }
     positionDiscoverySpotlights(root);
-    positionSupportCanvas(root);
+    if (!tableModelSelected || activeScenario.canvas?.visible) positionSupportCanvas(root);
     if (tableModelSelected) {
       loadTableContent();
       updateTablePanel();
@@ -1288,6 +1302,7 @@ function startTableSecondCycle() {
   }));
   appliedDiscoverySignature = JSON.stringify(DISCOVERIES);
   initDiscoveries(DISCOVERIES);
+  updateCanvasIllumination();
   updateTablePanel();
   window.openPanel('table-panel');
 }
@@ -1604,6 +1619,7 @@ function applyDiscoverySnapshot(list) {
       }))
     : next;
   initDiscoveries(DISCOVERIES);
+  updateCanvasIllumination();
   if (activeScenarioId === 'slides-discovery') {
     applyScenarioChrome();
     setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + DISCOVERIES.length + ' ευρήματα', false);
@@ -1618,10 +1634,21 @@ async function activateCircularTableScenario(data) {
   Object.assign(activeScenario, {
     title: data.title, subtitle: data.subtitle, description: data.description,
     subject: data.subject, year: data.year, showBishop: data.showBishop,
-    sculpture: data.sculpture, revealTrigger: data.revealTrigger, audio: data.audio
+    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas, audio: data.audio
   });
   tableContent = { questions: data.questions, hymn: data.hymn, secondCycle: data.secondCycle || [] };
   applyScenarioChrome();
+  if (supportCanvas) {
+    supportCanvas.visible = data.canvas.visible !== false;
+    positionSupportCanvas();
+    try {
+      await loadScenarioCanvasArtwork();
+      document.getElementById('canvas-status').textContent = '✅ Ο καμβάς δείχνει την εικόνα της κλήσης με μόνιμη επιγραφή του ύμνου.';
+    } catch (error) {
+      document.getElementById('canvas-status').textContent = '⚠️ Δεν φορτώθηκε η εικόνα του ύμνου.';
+      console.warn('Circular-table canvas artwork failed to load:', error);
+    }
+  }
   applyDiscoverySnapshot(data.discoveries);
 }
 
@@ -1819,7 +1846,7 @@ const CANVAS_IMAGE_HEIGHT = 1536;
 
 function positionSupportCanvas(root = activeSculptureRoot) {
   if (!supportCanvas) return;
-  if (tableModelSelected) return;
+  supportCanvas.scale.setScalar(activeScenario.canvas?.scale ?? 1);
   const bounds = new THREE.Box3();
   if (root) bounds.setFromObject(root);
   else bounds.setFromObject(sculptureGroup);
@@ -1827,7 +1854,7 @@ function positionSupportCanvas(root = activeSculptureRoot) {
     supportCanvas.position.set(-3.45, 0, 0);
     return;
   }
-  const frameWidth = 2.32;
+  const frameWidth = 2.32 * supportCanvas.scale.x;
   const gap = 0.28;
   // Light Up Legacy places the canvas on +X; Interactive Sculpture mirrors it to -X.
   supportCanvas.position.set(bounds.min.x - gap - frameWidth / 2, 0, (bounds.min.z + bounds.max.z) / 2);
@@ -1848,12 +1875,99 @@ function updateCanvasMaterials(texture) {
   updateCanvasIllumination();
 }
 
+function defaultSupportCanvasTexture() {
+  return supportCanvasScenarioTexture || supportCanvasDefaultMaps[0]?.map || null;
+}
+
+function drawCanvasImage(image, includeHymn = Boolean(activeScenario.canvas?.inscriptionSource)) {
+  const imageCanvas = document.createElement('canvas');
+  imageCanvas.width = CANVAS_IMAGE_WIDTH;
+  imageCanvas.height = CANVAS_IMAGE_HEIGHT;
+  const context = imageCanvas.getContext('2d');
+  context.fillStyle = '#07162b';
+  context.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
+  const scale = includeHymn
+    ? Math.max(imageCanvas.width / image.naturalWidth, imageCanvas.height / image.naturalHeight)
+    : Math.min(imageCanvas.width / image.naturalWidth, imageCanvas.height / image.naturalHeight);
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
+  context.drawImage(image, (imageCanvas.width - width) / 2, (imageCanvas.height - height) / 2, width, height);
+
+  if (includeHymn) {
+    const shade = context.createLinearGradient(0, 0, 0, 700);
+    shade.addColorStop(0, 'rgba(8, 18, 36, 0.78)');
+    shade.addColorStop(0.72, 'rgba(8, 18, 36, 0.48)');
+    shade.addColorStop(1, 'rgba(8, 18, 36, 0)');
+    context.fillStyle = shade;
+    context.fillRect(0, 0, imageCanvas.width, 700);
+    context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
+    context.shadowColor = 'rgba(0, 0, 0, 0.88)';
+    context.shadowBlur = 7;
+    context.shadowOffsetY = 2;
+    context.fillStyle = '#ffe7b2';
+    context.font = 'bold 39px Georgia, "Times New Roman", serif';
+    context.fillText(activeScenario.canvas.title || 'ΥΜΝΟΣ ΣΤΟ ΑΓΙΟ ΠΝΕΥΜΑ', imageCanvas.width / 2, 96);
+    context.shadowBlur = 0;
+    context.shadowOffsetY = 0;
+    context.strokeStyle = 'rgba(255, 223, 164, 0.78)';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(326, 124);
+    context.lineTo(698, 124);
+    context.stroke();
+    context.fillStyle = '#fffdf7';
+    context.font = 'bold 31px Georgia, "Times New Roman", serif';
+    let y = 174;
+    const maxWidth = 900;
+    const lineHeight = 48;
+    const inscription = activeScenario.canvas.inscriptionSource === 'hymn' ? tableContent.hymn?.text : activeScenario.canvas.inscriptionText;
+    for (const sourceLine of String(inscription || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)) {
+      const words = sourceLine.split(' ');
+      let line = '';
+      for (const word of words) {
+        const candidate = line ? `${line} ${word}` : word;
+        if (line && context.measureText(candidate).width > maxWidth) {
+          context.fillText(line, imageCanvas.width / 2, y);
+          y += lineHeight;
+          line = word;
+        } else line = candidate;
+      }
+      if (line) {
+        context.fillText(line, imageCanvas.width / 2, y);
+        y += lineHeight;
+      }
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(imageCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+async function loadScenarioCanvasArtwork() {
+  const artworkPath = activeScenario.canvas?.backgroundImage;
+  if (!artworkPath || !supportCanvas) return;
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = artworkPath;
+  await image.decode();
+  supportCanvasScenarioTexture?.dispose();
+  supportCanvasScenarioTexture = drawCanvasImage(image);
+  updateCanvasMaterials(supportCanvasUserTexture || supportCanvasScenarioTexture);
+}
+
 window.setCanvasBrightness = function(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return;
   supportCanvasBrightness = THREE.MathUtils.clamp(parsed, 0, 2.5);
   document.getElementById('canvas-brightness-value').textContent = supportCanvasBrightness.toFixed(2) + '×';
-  const defaultMap = supportCanvasDefaultMaps[0]?.map || null;
+  const defaultMap = defaultSupportCanvasTexture();
   updateCanvasMaterials(supportCanvasUserTexture || defaultMap);
 };
 
@@ -1869,23 +1983,7 @@ window.handleCanvasImageUpload = async function(event) {
     image.decoding = 'async';
     image.src = sourceUrl;
     await image.decode();
-    const imageCanvas = document.createElement('canvas');
-    imageCanvas.width = CANVAS_IMAGE_WIDTH;
-    imageCanvas.height = CANVAS_IMAGE_HEIGHT;
-    const context = imageCanvas.getContext('2d');
-    context.fillStyle = '#07162b';
-    context.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
-    const scale = Math.min(imageCanvas.width / image.naturalWidth, imageCanvas.height / image.naturalHeight);
-    const width = image.naturalWidth * scale;
-    const height = image.naturalHeight * scale;
-    context.drawImage(image, (imageCanvas.width - width) / 2, (imageCanvas.height - height) / 2, width, height);
-    const texture = new THREE.CanvasTexture(imageCanvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.flipY = false;
-    texture.generateMipmaps = true;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.needsUpdate = true;
+    const texture = drawCanvasImage(image);
     supportCanvasUserTexture?.dispose();
     supportCanvasUserTexture = texture;
     updateCanvasMaterials(texture);
@@ -1901,9 +1999,11 @@ window.handleCanvasImageUpload = async function(event) {
 window.restoreCanvasImage = function() {
   supportCanvasUserTexture?.dispose();
   supportCanvasUserTexture = null;
-  const defaultMap = supportCanvasDefaultMaps[0]?.map || null;
+  const defaultMap = defaultSupportCanvasTexture();
   if (defaultMap) updateCanvasMaterials(defaultMap);
-  document.getElementById('canvas-status').textContent = '↺ Επαναφέρθηκε η εικόνα του Δέντρου της Αποκάλυψης.';
+  document.getElementById('canvas-status').textContent = activeScenario.canvas?.inscriptionSource === 'hymn'
+    ? '↺ Επαναφέρθηκε η εικόνα με τον ύμνο στο Άγιο Πνεύμα.'
+    : '↺ Επαναφέρθηκε η εικόνα του Δέντρου της Αποκάλυψης.';
 };
 
 window.toggleSupportCanvasVisibility = function() {
@@ -1915,7 +2015,7 @@ window.toggleSupportCanvasVisibility = function() {
 async function loadSupportCanvas() {
   const status = document.getElementById('canvas-status');
   try {
-    const gltf = await gltfLoader.loadAsync('./models/tree-support-canvas.glb');
+    const gltf = await gltfLoader.loadAsync(activeScenario.canvas?.modelUrl || './models/tree-support-canvas.glb');
     supportCanvas = gltf.scene;
     supportCanvas.name = 'Tree_Support_Canvas';
     supportCanvas.traverse(node => {
@@ -1934,13 +2034,21 @@ async function loadSupportCanvas() {
       canvasMaterial.needsUpdate = true;
     });
     scene.add(supportCanvas);
-    if (tableModelSelected) supportCanvas.visible = false;
+    supportCanvas.visible = !tableModelSelected || Boolean(activeScenario.canvas?.visible);
     supportCanvasLight = new THREE.PointLight(0xffbb68, 0, 5, 2);
     supportCanvasLight.position.set(0, 2.0, 0.55);
     supportCanvas.add(supportCanvasLight);
     updateCanvasIllumination();
-    positionSupportCanvas();
-    status.textContent = '✅ Ο καμβάς είναι έτοιμος · η αρχική εικόνα είναι ενσωματωμένη στο GLB.';
+    if (!tableModelSelected || activeScenario.canvas?.visible) positionSupportCanvas();
+    if (activeScenario.canvas?.backgroundImage && tableContent.hymn?.text) {
+      try {
+        await loadScenarioCanvasArtwork();
+        status.textContent = '✅ Ο καμβάς δείχνει την εικόνα της κλήσης με μόνιμη επιγραφή του ύμνου.';
+      } catch (error) {
+        status.textContent = '⚠️ Δεν φορτώθηκε η εικόνα του ύμνου.';
+        console.warn('Circular-table canvas artwork failed to load:', error);
+      }
+    } else status.textContent = '✅ Ο καμβάς είναι έτοιμος · η αρχική εικόνα είναι ενσωματωμένη στο GLB.';
     return supportCanvas;
   } catch (error) {
     status.textContent = '❌ Δεν φορτώθηκε το μοντέλο του καμβά.';
@@ -2407,6 +2515,7 @@ function buildScenarioJSON() {
     ...(activeScenario.revealTrigger ? { revealTrigger: activeScenario.revealTrigger } : {}),
     sculpture: sculptureModel.config || activeScenario.sculpture,
     discoveries: DISCOVERIES || [],
+    ...(activeScenario.canvas ? { canvas: activeScenario.canvas } : {}),
     ...(tableModelSelected ? { questions: tableContent.questions, hymn: tableContent.hymn, secondCycle: tableContent.secondCycle } : {}),
     audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   };

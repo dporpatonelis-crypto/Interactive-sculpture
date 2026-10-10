@@ -38,7 +38,7 @@ export function installSculpturePicker({ getConfig, change, download }) {
   const close = dialog.querySelector('.picker-close');
   let entries = [], busy = false;
   const signature = config => !config ? 'legacy' : JSON.stringify([
-    new URL(config.url, location.href).href, config.height ?? 4.4,
+    new URL(config.url, location.href).href, config.height ?? 4.4, config.groundY ?? 0.7,
     ...['head','trunk','arms','base','periphery','core'].map(key => [...(config.regions?.[key] || [])].sort()),
     Object.entries(config.regionLabels || {}).sort(([a], [b]) => a.localeCompare(b)),
   ]);
