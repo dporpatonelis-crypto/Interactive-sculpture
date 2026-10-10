@@ -9,9 +9,19 @@
   "year": 2026,
   "showBishop": false,
   "revealTrigger": "clue",
+  "canvas": {
+    "modelUrl": "./models/tree-support-canvas.glb",
+    "backgroundImage": "./assets/sandals-call-background.png",
+    "scale": 0.66,
+    "title": "ΥΜΝΟΣ ΣΤΟ ΑΓΙΟ ΠΝΕΥΜΑ",
+    "inscriptionSource": "hymn",
+    "illuminateAfterAllClues": true,
+    "visible": true
+  },
   "sculpture": {
     "url": "./models/circular-table-regions.glb",
-    "height": 3.3,
+    "height": 2.2,
+    "groundY": 0,
     "regions": {
       "base": [
         "Table_sector_1"

@@ -82,7 +82,9 @@ export function createSculptureModel({ parent, regions, fallback, halo, onChange
       if (typeof request.url !== 'string' || !request.url.trim()) throw new Error('sculpture.url is required');
       const height = request.height ?? 4.4;
       if (!Number.isFinite(height) || height < 0.5 || height > 8) throw new Error('sculpture.height must be 0.5–8');
-      normalized = { url: request.url, height, regions: {}, regionLabels: {} };
+      const groundY = request.groundY ?? 0.7;
+      if (!Number.isFinite(groundY) || groundY < -10 || groundY > 10) throw new Error('sculpture.groundY must be -10–10');
+      normalized = { url: request.url, height, groundY, regions: {}, regionLabels: {} };
       const requestedKeys = Object.keys(request.regions ?? {});
       const unknownKeys = requestedKeys.filter(key => !MODEL_REGION_KEYS.includes(key));
       if (unknownKeys.length) throw new Error(`Unknown sculpture regions: ${unknownKeys.join(', ')}`);
@@ -134,7 +136,7 @@ export function createSculptureModel({ parent, regions, fallback, halo, onChange
         root.updateMatrixWorld(true);
         box.setFromObject(root);
         const center = box.getCenter(new THREE.Vector3());
-        root.position.add(new THREE.Vector3(-center.x, 0.7 - box.min.y, -center.z));
+        root.position.add(new THREE.Vector3(-center.x, groundY - box.min.y, -center.z));
         const loadedMaterials = new Set();
         root.traverse(mesh => {
           if (!mesh.isMesh) return;
