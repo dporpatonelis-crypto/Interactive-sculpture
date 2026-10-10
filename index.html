@@ -2047,18 +2047,31 @@ async function loadScenarioEnvironment(config) {
 function positionSupportCanvas(root = activeSculptureRoot) {
   if (!supportCanvas) return;
   supportCanvas.scale.setScalar(activeScenario.canvas?.scale ?? 1);
+  // The canvas surface starts out facing +Z. Turn it toward the sculpture on +X.
+  supportCanvas.rotation.y = Math.PI / 2;
   const bounds = new THREE.Box3();
   if (root) bounds.setFromObject(root);
   else bounds.setFromObject(sculptureGroup);
+
+  supportCanvas.position.set(0, 0, 0);
+  supportCanvas.updateWorldMatrix(true, true);
+  const frameBounds = new THREE.Box3().setFromObject(supportCanvas);
   if (bounds.isEmpty()) {
-    supportCanvas.position.set(-3.45, 0, 0);
+    supportCanvas.position.set(-3.45 - frameBounds.max.x, -frameBounds.min.y, -((frameBounds.min.z + frameBounds.max.z) / 2));
     return;
   }
-  const frameWidth = 2.32 * supportCanvas.scale.x;
-  const gap = 0.28;
-  // Light Up Legacy places the canvas on +X; Interactive Sculpture mirrors it to -X.
-  supportCanvas.position.set(bounds.min.x - gap - frameWidth / 2, 0, (bounds.min.z + bounds.max.z) / 2);
-  const combinedCenterX = (supportCanvas.position.x - frameWidth / 2 + bounds.max.x) / 2;
+  const sculptureCenter = bounds.getCenter(new THREE.Vector3());
+  const canvasCenter = frameBounds.getCenter(new THREE.Vector3());
+  const gap = 1.5;
+  // Keep a clear 1.5 m walkway from the sculpture bounds to the canvas frame.
+  supportCanvas.position.set(
+    bounds.min.x - gap - frameBounds.max.x,
+    -frameBounds.min.y,
+    sculptureCenter.z - canvasCenter.z
+  );
+  supportCanvas.updateWorldMatrix(true, true);
+  const combinedBounds = bounds.clone().union(new THREE.Box3().setFromObject(supportCanvas));
+  const combinedCenterX = combinedBounds.getCenter(new THREE.Vector3()).x;
   const horizontalShift = combinedCenterX - controls.target.x;
   controls.target.x = combinedCenterX;
   camera.position.x += horizontalShift;
