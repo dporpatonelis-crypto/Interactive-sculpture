@@ -245,6 +245,7 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
       <div id="slide-discovery-status" class="hud-text" style="margin-top:6px;"></div>
     <div class="bishop-buttons" style="margin-top:8px;">
       <button class="submit-btn" onclick="downloadScenarioJSON()">⬇️ ΛΗΨΗ</button>
+      <button id="scenario-json-editor-button" class="submit-btn" onclick="openScenarioJsonEditor()">✏️ JSON ΣΕΝΑΡΙΟΥ</button>
       <button class="submit-btn" onclick="saveScenarioToGitHub()">☁️ GITHUB</button>
     </div>
     <div id="scenario-save-status" class="hud-text" style="margin-top:6px;">Το GITHUB χρησιμοποιεί το token του JSON panel.</div>
@@ -541,18 +542,44 @@ const SCENARIOS = {
   'circular-table': {
     id: 'circular-table',
     title: 'Κυκλική Τράπεζα της Εκκλησίας',
-    subtitle: 'Έξι λύσεις · μία κοινή φλόγα',
+    subtitle: 'Έξι clues · μία κοινή φλόγα',
     subject: 'Εκκλησία και ενότητα',
     year: 2026,
-    description: 'Ο εκπαιδευτικός επιβεβαιώνει κάθε σωστή λύση. Μία ακτίνα φωτίζεται και στέλνει ενέργεια στην κεντρική φλόγα. Με έξι λύσεις ολοκληρώνεται ο δακτύλιος.',
+    description: 'Τα έξι clues φορτώνονται από αυτοτελές JSON. Κάθε εύρημα φωτίζει μία ακτίνα και στέλνει ενέργεια στην κεντρική φλόγα.',
     showBishop: false,
     sculpture: TABLE_SCULPTURE,
-    discoveries: TABLE_DISCOVERIES,
+    discoveries: [],
+    revealTrigger: 'clue',
     hymn: { title: 'Ύμνος', text: '', audioUrl: '' },
     secondCycle: [],
     audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   }
 };
+
+let circularTableScenarioRequest = null;
+function validateCircularTableScenario(data) {
+  if (data.type !== 'interactive-sculpture-scenario' || data.id !== 'circular-table' || data.revealTrigger !== 'clue') {
+    throw new Error('Μη έγκυρο σενάριο Κυκλικής Τράπεζας.');
+  }
+  if (!Array.isArray(data.discoveries) || data.discoveries.length !== 6 ||
+      data.discoveries.some((disc, index) => disc.region !== TABLE_REGION_KEYS[index] || !disc.id || !disc.fullText || !disc.markerPosition) ||
+      new Set(data.discoveries.map(disc => disc.id)).size !== 6) {
+    throw new Error('Το σενάριο χρειάζεται έξι έγκυρα clues, ένα για κάθε ακτίνα.');
+  }
+  if (!data.sculpture?.url || !Array.isArray(data.questions) || data.questions.length !== 6 || !data.hymn?.text) {
+    throw new Error('Λείπουν το γλυπτό, οι έξι αντιστοιχίσεις ή ο ύμνος.');
+  }
+  return data;
+}
+function fetchCircularTableScenario() {
+  if (!circularTableScenarioRequest) {
+    circularTableScenarioRequest = fetch('./scenarios/circular-table.json', { cache: 'no-store' }).then(async response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return validateCircularTableScenario(await response.json());
+    });
+  }
+  return circularTableScenarioRequest;
+}
 
 const queryParams = new URLSearchParams(window.location.search);
 const requestedScenarioId = queryParams.get('scenario');
@@ -834,6 +861,7 @@ function applyScenarioChrome() {
   }
   const description = document.getElementById('scenario-description');
   if (description) description.textContent = activeScenario.description;
+  document.getElementById('scenario-json-editor-button').style.display = activeScenarioId === 'circular-table' ? '' : 'none';
 
   const bishopButton = document.getElementById('btn-bishop');
   const bishopPanel = document.getElementById('bishop-panel');
@@ -1168,11 +1196,15 @@ function normalizeTableAnswer(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('el').trim().replace(/\s+/g, ' ');
 }
 
+function tableUsesClues() {
+  return activeScenarioId === 'slides-discovery' || activeScenario.revealTrigger === 'clue';
+}
+
 function updateTablePanel() {
   if (!tableModelSelected) return;
   const count = state.foundDiscoveries.size;
   document.getElementById('btn-table').textContent = `🕯️ Τράπεζα ${count}/6`;
-  document.getElementById('table-progress').textContent = `${tableCycle === 2 ? 'Κύκλος Σωφρονίου · ' : ''}${count} από 6 περιοχές φωτισμένες${activeScenarioId === 'slides-discovery' ? ' · μετά την εύρεση clue' : ''}`;
+  document.getElementById('table-progress').textContent = `${tableCycle === 2 ? 'Κύκλος Σωφρονίου · ' : ''}${count} από 6 περιοχές φωτισμένες${tableUsesClues() ? ' · μετά την εύρεση clue' : ''}`;
   const list = document.getElementById('table-sector-list');
   list.replaceChildren(...TABLE_REGION_KEYS.map((region, index) => {
     const button = document.createElement('button');
@@ -1187,21 +1219,21 @@ function updateTablePanel() {
   const question = selectedTableSector == null ? null : tableQuestion(selectedTableSector);
   const done = selectedTableSector == null || state.foundDiscoveries.has(DISCOVERIES[selectedTableSector]?.id);
   document.getElementById('table-challenge').textContent = selectedTableSector == null
-    ? (activeScenarioId === 'slides-discovery'
+    ? (tableUsesClues()
         ? 'Βρείτε τα clues στον χώρο. Κάθε εύρημα φωτίζει μία ακτίνα της τράπεζας.'
         : 'Επίλεξε μια ακτίνα. Ο εκπαιδευτικός επιβεβαιώνει τη σωστή λύση της τάξης.')
     : done && (question.verse || question.discovery)
       ? `${question.object || `Ακτίνα ${selectedTableSector + 1}`}\n«${question.verse || ''}»\n${question.discovery || ''}`
-      : activeScenarioId === 'slides-discovery'
+      : tableUsesClues()
         ? `Βρείτε το clue για την ακτίνα ${selectedTableSector + 1}. Η ανακάλυψη θα φωτίσει την περιοχή.`
         : (question.prompt || `Ακτίνα ${selectedTableSector + 1}: παρουσιάστε τη λύση και ζητήστε επιβεβαίωση από τον εκπαιδευτικό.`);
   const answer = document.getElementById('table-answer');
   const hasAnswers = Array.isArray(question?.answers) && question.answers.length > 0;
-  answer.style.display = hasAnswers && !done && activeScenarioId !== 'slides-discovery' ? 'block' : 'none';
+  answer.style.display = hasAnswers && !done && !tableUsesClues() ? 'block' : 'none';
   const confirm = document.getElementById('table-confirm');
   confirm.disabled = done;
   confirm.textContent = hasAnswers ? 'Έλεγχος λύσης' : 'Επιβεβαίωση σωστής λύσης';
-  confirm.style.display = activeScenarioId === 'slides-discovery' ? 'none' : 'block';
+  confirm.style.display = tableUsesClues() ? 'none' : 'block';
   document.getElementById('table-open-hymn').style.display = count === 6 ? 'block' : 'none';
 }
 
@@ -1263,9 +1295,7 @@ function startTableSecondCycle() {
 async function loadTableContent() {
   if (!tableModelSelected) return;
   try {
-    const response = await fetch('data/circular-table-content.json');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const data = await fetchCircularTableScenario();
     tableContent = {
       questions: Array.isArray(data.questions) ? data.questions.slice(0, 6) : [],
       hymn: data.hymn && typeof data.hymn === 'object' ? data.hymn : tableContent.hymn,
@@ -1434,7 +1464,7 @@ function burstAt(position, colorHex) {
 // light, shows the full inscription text, and unlocks the canvas after the final discovery.
 function revealDiscovery(markerObj) {
   if (markerObj.found) return;
-  if (activeScenarioId === 'circular-table' && !markerObj.approved) {
+  if (activeScenarioId === 'circular-table' && !tableUsesClues() && !markerObj.approved) {
     openTableChallenge(markerObj);
     return;
   }
@@ -1494,7 +1524,7 @@ function revealDiscovery(markerObj) {
     updateTablePanel();
     if (state.foundDiscoveries.size === 6) completeTableCycle();
   }
-  if (activeScenarioId !== 'circular-table') showRevealPanel(markerObj, disc);
+  if (activeScenarioId !== 'circular-table' || tableUsesClues()) showRevealPanel(markerObj, disc);
   voiceReward.play(disc.region);
   burstAt(markerObj.mesh.position, discoveryLightColor);
   markerObj.mesh.visible = false; markerObj.light.intensity = 0;
@@ -1581,7 +1611,32 @@ function applyDiscoverySnapshot(list) {
   if (typeof drawMenu === 'function' && menuAttached) drawMenu();
 }
 
+async function activateCircularTableScenario(data) {
+  validateCircularTableScenario(data);
+  const loaded = await changeLessonSculpture(data.sculpture);
+  if (!loaded) throw new Error('Δεν φορτώθηκε το γλυπτό.');
+  Object.assign(activeScenario, {
+    title: data.title, subtitle: data.subtitle, description: data.description,
+    subject: data.subject, year: data.year, showBishop: data.showBishop,
+    sculpture: data.sculpture, revealTrigger: data.revealTrigger, audio: data.audio
+  });
+  tableContent = { questions: data.questions, hymn: data.hymn, secondCycle: data.secondCycle || [] };
+  applyScenarioChrome();
+  applyDiscoverySnapshot(data.discoveries);
+}
+
 async function startDiscoveryData() {
+  if (activeScenarioId === 'circular-table') {
+    try {
+      await activateCircularTableScenario(await fetchCircularTableScenario());
+      setScenarioSaveStatus('✅ Φορτώθηκε το αυτοτελές σενάριο JSON με έξι clues.', false);
+    } catch (error) {
+      console.error('Circular-table scenario unavailable:', error);
+      setScenarioSaveStatus('❌ Δεν φορτώθηκε το αυτοτελές σενάριο JSON.', true);
+      document.getElementById('table-progress').textContent = 'Δεν φορτώθηκε το σενάριο της τράπεζας.';
+    }
+    return;
+  }
   const initial = await loadDiscoveries(false);
   applyDiscoverySnapshot(initial);
   if (activeScenarioId === 'slides-discovery' && !discoveryDataStarted) {
@@ -2253,24 +2308,45 @@ function buildJSON(memoryName) {
   return data;
 }
 
+let jsonEditorMode = 'lesson';
 window.toggleJsonPanel = function() {
   const panel = document.getElementById('json-panel');
   if (!panel) return;
   const isVisible = panel.style.display === 'flex';
   hideHudPanels();
   if (!isVisible) {
+    jsonEditorMode = 'lesson';
     panel.style.display = 'flex';
     document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2);
   }
 };
 
 window.exportJSON = function() {
-  document.getElementById('json-editor').value = JSON.stringify(buildJSON(), null, 2);
+  document.getElementById('json-editor').value = JSON.stringify(jsonEditorMode === 'scenario' ? buildScenarioJSON() : buildJSON(), null, 2);
 };
 
 window.importJSON = async function() {
   try {
     const data = JSON.parse(document.getElementById('json-editor').value);
+    if (data.type === 'interactive-sculpture-scenario') {
+      if (activeScenarioId !== 'circular-table') {
+        throw new Error('Άνοιξε πρώτα το σενάριο «Κυκλική Τράπεζα της Εκκλησίας».');
+      }
+      validateCircularTableScenario(data);
+      const previousScenarioRequest = circularTableScenarioRequest;
+      circularTableScenarioRequest = Promise.resolve(data);
+      try {
+        await activateCircularTableScenario(data);
+      } catch (error) {
+        circularTableScenarioRequest = previousScenarioRequest;
+        throw error;
+      }
+      jsonEditorMode = 'scenario';
+      document.getElementById('json-editor').value = JSON.stringify(buildScenarioJSON(), null, 2);
+      setScenarioSaveStatus('✅ Το σενάριο JSON φορτώθηκε με έξι clues.', false);
+      alert('✅ Το σενάριο φορτώθηκε επιτυχώς!');
+      return;
+    }
     if (Object.prototype.hasOwnProperty.call(data, 'sculpture')) {
       const changed = await changeLessonSculpture(data.sculpture);
       if (!changed) throw new Error('Η φόρτωση του γλυπτού αντικαταστάθηκε από νεότερη επιλογή.');
@@ -2296,6 +2372,10 @@ window.importJSON = async function() {
 };
 
 window.downloadJSON = function() {
+  if (jsonEditorMode === 'scenario') {
+    window.downloadScenarioJSON();
+    return;
+  }
   const json = JSON.stringify(buildJSON(), null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -2304,6 +2384,13 @@ window.downloadJSON = function() {
   a.download = 'ISP_' + (regionsData.head.name || 'Sculpture') + '_' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
+};
+
+window.openScenarioJsonEditor = function() {
+  hideHudPanels();
+  jsonEditorMode = 'scenario';
+  document.getElementById('json-panel').style.display = 'flex';
+  document.getElementById('json-editor').value = JSON.stringify(buildScenarioJSON(), null, 2);
 };
 
 function buildScenarioJSON() {
@@ -2317,9 +2404,10 @@ function buildScenarioJSON() {
     subject: activeScenario.subject,
     year: activeScenario.year,
     showBishop: activeScenario.showBishop,
-    sculpture: sculptureModel.config,
+    ...(activeScenario.revealTrigger ? { revealTrigger: activeScenario.revealTrigger } : {}),
+    sculpture: sculptureModel.config || activeScenario.sculpture,
     discoveries: DISCOVERIES || [],
-    ...(tableModelSelected ? { hymn: tableContent.hymn, secondCycle: tableContent.secondCycle } : {}),
+    ...(tableModelSelected ? { questions: tableContent.questions, hymn: tableContent.hymn, secondCycle: tableContent.secondCycle } : {}),
     audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   };
 }
@@ -2542,7 +2630,7 @@ installSculpturePicker({
   change: changeLessonSculpture,
   download: () => window.downloadJSON()
 });
-if (activeScenarioId === 'circular-table' || (activeScenarioId === 'slides-discovery' && queryParams.get('sculpture') === 'circular-table')) {
+if (activeScenarioId === 'slides-discovery' && queryParams.get('sculpture') === 'circular-table') {
   changeLessonSculpture(TABLE_SCULPTURE).then(loaded => {
     if (!loaded) document.getElementById('table-progress').textContent = 'Δεν φορτώθηκε το γλυπτό της τράπεζας.';
   }).catch(error => {
@@ -2777,7 +2865,7 @@ function animate() {
     m.mesh.material.emissiveIntensity = pulse;
     m.mesh.scale.setScalar(1 + Math.sin(time * 2) * 0.08);
     m.light.intensity = 0.35 + pulse * 0.3;
-    if (activeScenarioId !== 'circular-table' && camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
+    if ((activeScenarioId !== 'circular-table' || tableUsesClues()) && camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
   });
 
   // Φάση 3: ease each region back to its original materials over ~2 seconds.
