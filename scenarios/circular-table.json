@@ -12,11 +12,20 @@
   "canvas": {
     "modelUrl": "./models/tree-support-canvas.glb",
     "backgroundImage": "./assets/sandals-call-background.png",
+    "videoUrl": "./assets/circular-table-reveal.mp4",
+    "videoTitle": "Το Μικρότερο Δωμάτιο Που Χώρεσε Τον Κόσμο",
     "scale": 0.66,
     "title": "ΥΜΝΟΣ ΣΤΟ ΑΓΙΟ ΠΝΕΥΜΑ",
     "inscriptionSource": "hymn",
     "illuminateAfterAllClues": true,
     "visible": true
+  },
+  "environmentModel": {
+    "modelUrl": "./models/upper-room-jerusalem.glb",
+    "name": "Υπερώο Ιερουσαλήμ",
+    "height": 4.2,
+    "position": { "x": 0, "y": 0, "z": -5.2 },
+    "rotationY": 0
   },
   "sculpture": {
     "url": "./models/circular-table-regions.glb",
@@ -57,11 +66,7 @@
       "region": "base",
       "team": "Φλόγα",
       "category": "theological",
-      "markerPosition": {
-        "x": 0.0,
-        "y": 2.25,
-        "z": 2.4
-      },
+      "markerPosition": { "x": 0.0, "y": 2.25, "z": 2.4 },
       "shortText": "Πώς συνδέεται η κεντρική φλόγα με τον ύμνο;",
       "fullText": "«Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον» — Πηγή της ζωής και των χαρισμάτων",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"
@@ -71,11 +76,7 @@
       "region": "trunk",
       "team": "Κύλινδρος",
       "category": "theological",
-      "markerPosition": {
-        "x": 2.078,
-        "y": 2.25,
-        "z": 1.2
-      },
+      "markerPosition": { "x": 2.078, "y": 2.25, "z": 1.2 },
       "shortText": "Πώς συνδέεται ο κύλινδρος με τον ύμνο;",
       "fullText": "«ἀγραμμάτους σοφίαν ἐδίδαξεν» — Φωτισμός και αποστολική διδασκαλία",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"
@@ -85,11 +86,7 @@
       "region": "arms",
       "team": "Σανδάλια ψαρά και πέτρα",
       "category": "theological",
-      "markerPosition": {
-        "x": 2.078,
-        "y": 2.25,
-        "z": -1.2
-      },
+      "markerPosition": { "x": 2.078, "y": 2.25, "z": -1.2 },
       "shortText": "Τι συμβολίζουν τα σανδάλια του ψαρά και η πέτρα σε σχέση με τον ύμνο;",
       "fullText": "«ἁλιεῖς θεολόγους ἀνέδειξεν» — Μεταμόρφωση και αποστολή. Η πέτρα συνδέεται με τον Στέφανο, ενώ τα σανδάλια με τη διασπορά των πιστών και τη διάδοση του Ευαγγελίου.",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"
@@ -99,11 +96,7 @@
       "region": "head",
       "team": "Άρτος και οίνος",
       "category": "theological",
-      "markerPosition": {
-        "x": 0.0,
-        "y": 2.25,
-        "z": -2.4
-      },
+      "markerPosition": { "x": 0.0, "y": 2.25, "z": -2.4 },
       "shortText": "Πώς συνδέονται ο άρτος και ο οίνος με τον ύμνο;",
       "fullText": "«ὅλον συγκροτεῖ τὸν θεσμὸν τῆς Ἐκκλησίας» — Ευχαριστιακή κοινωνία",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"
@@ -113,11 +106,7 @@
       "region": "periphery",
       "team": "Νομίσματα",
       "category": "theological",
-      "markerPosition": {
-        "x": -2.078,
-        "y": 2.25,
-        "z": -1.2
-      },
+      "markerPosition": { "x": -2.078, "y": 2.25, "z": -1.2 },
       "shortText": "Πώς συνδέονται τα νομίσματα με τον ύμνο;",
       "fullText": "«ὅλον συγκροτεῖ τὸν θεσμὸν τῆς Ἐκκλησίας» — Ενότητα και κοινοκτημοσύνη",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"
@@ -127,11 +116,7 @@
       "region": "core",
       "team": "Καλάθι τροφίμων",
       "category": "theological",
-      "markerPosition": {
-        "x": -2.078,
-        "y": 2.25,
-        "z": 1.2
-      },
+      "markerPosition": { "x": -2.078, "y": 2.25, "z": 1.2 },
       "shortText": "Πώς συνδέεται το καλάθι τροφίμων με τον ύμνο;",
       "fullText": "«ὅλον συγκροτεῖ τὸν θεσμὸν τῆς Ἐκκλησίας» — Διακονία και φροντίδα",
       "source": "Ύμνος «Πάντα χορηγεῖ τὸ Πνεῦμα τὸ Ἅγιον»"

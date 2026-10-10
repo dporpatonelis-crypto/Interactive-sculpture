@@ -341,10 +341,12 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
       <output id="canvas-brightness-value">1.00×</output>
     </div>
     <button class="submit-btn" onclick="restoreCanvasImage()">↺ ΕΠΑΝΑΦΟΡΑ ΑΡΧΙΚΗΣ ΕΙΚΟΝΑΣ</button>
+    <button class="submit-btn" id="canvas-video-button" onclick="handleCanvasVideoButton()" hidden>▶ ΠΡΟΒΟΛΗ ΒΙΝΤΕΟ</button>
     <button class="submit-btn" id="canvas-visibility-button" onclick="toggleSupportCanvasVisibility()">◉ ΑΠΟΚΡΥΨΗ ΚΑΜΒΑ</button>
     <div class="canvas-status" id="canvas-status" aria-live="polite">Φόρτωση καμβά…</div>
     <div class="canvas-privacy-note">Η εικόνα αντικατάστασης μένει τοπικά σε αυτή τη συνεδρία του browser και δεν ανεβαίνει στο GitHub.</div>
   </div>
+  <video id="scenario-canvas-video" preload="none" playsinline webkit-playsinline hidden></video>
 
   <div id="asset-edit-panel" class="hud-panel">
     <div class="header">
@@ -467,12 +469,19 @@ const categoryColors = {
 
 const SCENARIO_AUDIO_BASE = 'https://raw.githubusercontent.com/dporpatonelis-crypto/light-up-legacy/main/public/audio/freedom/';
 const TABLE_REGION_KEYS = ['base', 'trunk', 'arms', 'head', 'periphery', 'core'];
+const TABLE_MARKER_POSITIONS = [
+  { x: 0.0, y: 2.25, z: 2.4 },
+  { x: 2.078, y: 2.25, z: 1.2 },
+  { x: 2.078, y: 2.25, z: -1.2 },
+  { x: 0.0, y: 2.25, z: -2.4 },
+  { x: -2.078, y: 2.25, z: -1.2 },
+  { x: -2.078, y: 2.25, z: 1.2 }
+];
 const TABLE_DISCOVERIES = TABLE_REGION_KEYS.map((region, index) => {
-  const angle = index * Math.PI / 3;
   return {
     id: `table-sector-${index + 1}`, region, team: `Ακτίνα ${index + 1}`,
     category: 'theological',
-    markerPosition: { x: Math.sin(angle) * 2.4, y: 2.25, z: Math.cos(angle) * 2.4 },
+    markerPosition: TABLE_MARKER_POSITIONS[index],
     shortText: `Ακτίνα ${index + 1}`,
     fullText: `Η λύση για την ακτίνα ${index + 1} επιβεβαιώθηκε από τον εκπαιδευτικό.`,
     source: 'Κυκλική Τράπεζα της Εκκλησίας'
@@ -553,6 +562,8 @@ const SCENARIOS = {
     canvas: {
       modelUrl: './models/tree-support-canvas.glb',
       backgroundImage: './assets/sandals-call-background.png',
+      videoUrl: './assets/circular-table-reveal.mp4',
+      videoTitle: 'Το Μικρότερο Δωμάτιο Που Χώρεσε Τον Κόσμο',
       scale: 0.66,
       title: 'ΥΜΝΟΣ ΣΤΟ ΑΓΙΟ ΠΝΕΥΜΑ',
       inscriptionSource: 'hymn',
@@ -571,15 +582,20 @@ function validateCircularTableScenario(data) {
     throw new Error('Μη έγκυρο σενάριο Κυκλικής Τράπεζας.');
   }
   if (!Array.isArray(data.discoveries) || data.discoveries.length !== 6 ||
-      data.discoveries.some((disc, index) => disc.region !== TABLE_REGION_KEYS[index] || !disc.id || !disc.fullText || !disc.markerPosition) ||
+      data.discoveries.some((disc, index) => disc.region !== TABLE_REGION_KEYS[index] || !disc.id || !disc.fullText ||
+        (!disc.markerPosition && disc.markerPositionMode !== 'region-top')) ||
       new Set(data.discoveries.map(disc => disc.id)).size !== 6) {
     throw new Error('Το σενάριο χρειάζεται έξι έγκυρα clues, ένα για κάθε ακτίνα.');
   }
   if (!data.sculpture?.url || !Array.isArray(data.questions) || data.questions.length !== 6 || !data.hymn?.text) {
     throw new Error('Λείπουν το γλυπτό, οι έξι αντιστοιχίσεις ή ο ύμνος.');
   }
-  if (!data.canvas?.modelUrl || !data.canvas?.backgroundImage || data.canvas.inscriptionSource !== 'hymn' || !data.canvas.illuminateAfterAllClues) {
-    throw new Error('Λείπουν οι ρυθμίσεις του καμβά με τον ύμνο.');
+  if (!data.canvas?.modelUrl || !data.canvas?.backgroundImage || !data.canvas?.videoUrl ||
+      data.canvas.inscriptionSource !== 'hymn' || !data.canvas.illuminateAfterAllClues) {
+    throw new Error('Λείπουν οι ρυθμίσεις του καμβά, του βίντεο ή του ύμνου.');
+  }
+  if (!data.environmentModel?.modelUrl || !(Number(data.environmentModel.height) > 0)) {
+    throw new Error('Λείπει το μόνιμο μοντέλο του Υπερώου.');
   }
   return data;
 }
@@ -1071,12 +1087,120 @@ function updateMeshMaterials(mesh, update) {
 
 let supportCanvas = null;
 let activeSculptureRoot = null;
+let scenarioEnvironmentRoot = null;
 let supportCanvasMaterials = [];
 let supportCanvasDefaultMaps = [];
 let supportCanvasUserTexture = null;
 let supportCanvasScenarioTexture = null;
+let supportCanvasVideoTexture = null;
+let scenarioCanvasVideoUnlocked = false;
+let scenarioCanvasVideoStarted = false;
 let supportCanvasBrightness = 1;
 let supportCanvasLight = null;
+
+function updateCanvasVideoButton() {
+  const button = document.getElementById('canvas-video-button');
+  if (!button) return;
+  const available = activeScenarioId === 'circular-table' && Boolean(activeScenario.canvas?.videoUrl);
+  button.hidden = !available || !scenarioCanvasVideoUnlocked;
+}
+
+function stopCanvasVideoPlayback() {
+  const video = document.getElementById('scenario-canvas-video');
+  if (video) {
+    video.onended = null;
+    video.onerror = null;
+    video.pause();
+    if (Number.isFinite(video.currentTime)) video.currentTime = 0;
+  }
+  supportCanvasVideoTexture?.dispose();
+  supportCanvasVideoTexture = null;
+  const button = document.getElementById('canvas-video-button');
+  if (button) button.textContent = '↺ ΕΠΑΝΑΛΗΨΗ ΒΙΝΤΕΟ';
+}
+
+function returnCanvasToHymn(message) {
+  stopCanvasVideoPlayback();
+  supportCanvasUserTexture?.dispose();
+  supportCanvasUserTexture = null;
+  const hymnTexture = supportCanvasScenarioTexture || supportCanvasDefaultMaps[0]?.map;
+  if (hymnTexture) updateCanvasMaterials(hymnTexture);
+  const button = document.getElementById('canvas-video-button');
+  if (button) button.textContent = '↺ ΕΠΑΝΑΛΗΨΗ ΒΙΝΤΕΟ';
+  const status = document.getElementById('canvas-status');
+  if (status && message) status.textContent = message;
+}
+
+async function playScenarioCanvasVideo({ muted = false } = {}) {
+  const video = document.getElementById('scenario-canvas-video');
+  const button = document.getElementById('canvas-video-button');
+  const status = document.getElementById('canvas-status');
+  const videoUrl = activeScenario.canvas?.videoUrl;
+  const videoTitle = activeScenario.canvas?.videoTitle || 'το βίντεο του σεναρίου';
+  if (!video || !videoUrl || !supportCanvasMaterials.length || !scenarioCanvasVideoUnlocked) return;
+
+  const resolvedUrl = new URL(videoUrl, location.href).href;
+  if (video.dataset.sourceUrl !== resolvedUrl) {
+    video.src = resolvedUrl;
+    video.dataset.sourceUrl = resolvedUrl;
+    video.load();
+  }
+  video.pause();
+  try { video.currentTime = 0; } catch (_) {}
+  video.playsInline = true;
+  video.muted = muted;
+  video.volume = 1;
+
+  supportCanvasUserTexture?.dispose();
+  supportCanvasUserTexture = null;
+  supportCanvasVideoTexture?.dispose();
+  supportCanvasVideoTexture = new THREE.VideoTexture(video);
+  supportCanvasVideoTexture.colorSpace = THREE.SRGBColorSpace;
+  supportCanvasVideoTexture.flipY = false;
+  supportCanvasVideoTexture.minFilter = THREE.LinearFilter;
+  supportCanvasVideoTexture.magFilter = THREE.LinearFilter;
+  updateCanvasMaterials(supportCanvasVideoTexture);
+
+  video.onended = () => returnCanvasToHymn('✅ Το βίντεο ολοκληρώθηκε· επέστρεψε η αρχική εικόνα με τον ύμνο.');
+  video.onerror = () => returnCanvasToHymn('⚠️ Δεν φορτώθηκε το βίντεο. Πάτησε «Επανάληψη βίντεο» για νέα προσπάθεια.');
+
+  try {
+    await video.play();
+  } catch (error) {
+    if (!video.muted) {
+      video.muted = true;
+      try {
+        await video.play();
+      } catch (mutedError) {
+        returnCanvasToHymn('⚠️ Το βίντεο δεν ξεκίνησε αυτόματα. Πάτησε «Επανάληψη βίντεο» για νέα προσπάθεια.');
+        console.warn('Circular-table video playback failed:', mutedError);
+        return;
+      }
+    } else {
+      returnCanvasToHymn('⚠️ Το βίντεο δεν ξεκίνησε αυτόματα. Πάτησε «Επανάληψη βίντεο» για νέα προσπάθεια.');
+      console.warn('Circular-table video playback failed:', error);
+      return;
+    }
+  }
+  if (button) button.textContent = video.muted ? '🔊 ΕΝΕΡΓΟΠΟΙΗΣΗ ΗΧΟΥ' : '🔇 ΣΙΓΑΣΗ ΒΙΝΤΕΟ';
+  if (status) status.textContent = video.muted
+    ? `▶ Παίζει το «${videoTitle}»· πάτησε για ενεργοποίηση ήχου.`
+    : `▶ Παίζει το «${videoTitle}» με ήχο.`;
+}
+
+window.handleCanvasVideoButton = async function() {
+  const video = document.getElementById('scenario-canvas-video');
+  if (!scenarioCanvasVideoUnlocked || !video) return;
+  if (video.paused || video.ended) {
+    await playScenarioCanvasVideo({ muted: false });
+    return;
+  }
+  video.muted = !video.muted;
+  const button = document.getElementById('canvas-video-button');
+  if (button) button.textContent = video.muted ? '🔊 ΕΝΕΡΓΟΠΟΙΗΣΗ ΗΧΟΥ' : '🔇 ΣΙΓΑΣΗ ΒΙΝΤΕΟ';
+  const status = document.getElementById('canvas-status');
+  if (status) status.textContent = video.muted ? 'Το βίντεο συνεχίζει χωρίς ήχο.' : 'Το βίντεο συνεχίζει με ήχο.';
+};
 
 function canvasUnlockFactor() {
   if (DISCOVERIES.length === 0) return activeScenarioId === 'slides-discovery' || activeScenario.canvas?.illuminateAfterAllClues ? 0 : 1;
@@ -1087,6 +1211,14 @@ function updateCanvasIllumination() {
   const factor = canvasUnlockFactor();
   for (const material of supportCanvasMaterials) material.emissiveIntensity = 0.45 * supportCanvasBrightness * factor;
   if (supportCanvasLight) supportCanvasLight.intensity = 2.2 * supportCanvasBrightness * factor;
+  if (activeScenarioId === 'circular-table' && activeScenario.canvas?.videoUrl && factor === 1) {
+    scenarioCanvasVideoUnlocked = true;
+    updateCanvasVideoButton();
+    if (!scenarioCanvasVideoStarted) {
+      scenarioCanvasVideoStarted = true;
+      void playScenarioCanvasVideo({ muted: false });
+    }
+  } else updateCanvasVideoButton();
 }
 
 const fallbackRegions = {
@@ -1411,12 +1543,23 @@ function createHiddenMarker(disc) {
   const geo = new THREE.IcosahedronGeometry(0.12, 0);
   const mat = new THREE.MeshStandardMaterial({ color: 0x333344, emissive: 0x222244, emissiveIntensity: 0.6, roughness: 0.4, metalness: 0.3 });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(disc.markerPosition.x, disc.markerPosition.y, disc.markerPosition.z);
+  let markerPosition = disc.markerPosition ? new THREE.Vector3(disc.markerPosition.x, disc.markerPosition.y, disc.markerPosition.z) : null;
+  if (disc.markerPositionMode === 'region-top' && tableModelSelected) {
+    sculptureGroup.updateWorldMatrix(true, true);
+    const bounds = new THREE.Box3();
+    meshesInRegion(disc.region).forEach(regionMesh => bounds.expandByObject(regionMesh));
+    if (!bounds.isEmpty()) {
+      const center = bounds.getCenter(new THREE.Vector3());
+      markerPosition = sculptureGroup.worldToLocal(new THREE.Vector3(center.x, bounds.max.y, center.z));
+      markerPosition.y += Number.isFinite(disc.markerOffset) ? disc.markerOffset : 0.16;
+    }
+  }
+  mesh.position.copy(markerPosition || new THREE.Vector3(0, 0.2, 0));
   mesh.userData = { isDiscoveryMarker: true, discoveryId: disc.id };
   mesh.castShadow = true;
   sculptureGroup.add(mesh);
   const light = new THREE.PointLight(0x8899ff, 0.5, 2.2);
-  light.position.copy(mesh.position);
+  light.position.copy(mesh.getWorldPosition(new THREE.Vector3()));
   scene.add(light);
   const entry = { mesh, light, data: disc, found: false, revealPanel: null };
   discoveryMarkers.push(entry);
@@ -1573,6 +1716,15 @@ function clearDiscoveries() {
   discoveryMarkers.length = 0;
   state.foundDiscoveries.clear();
   activeReveals.length = 0;
+  scenarioCanvasVideoUnlocked = false;
+  scenarioCanvasVideoStarted = false;
+  if (supportCanvasVideoTexture) {
+    stopCanvasVideoPlayback();
+    supportCanvasUserTexture?.dispose();
+    supportCanvasUserTexture = null;
+    if (supportCanvasScenarioTexture) updateCanvasMaterials(supportCanvasScenarioTexture);
+  }
+  updateCanvasVideoButton();
   if (tableModelSelected) TABLE_REGION_KEYS.forEach(key => { regionLights[key].intensity = 0; });
   tableCenterLight.intensity = 0;
   tableUnityRing.visible = false;
@@ -1615,7 +1767,9 @@ function applyDiscoverySnapshot(list) {
         ...discovery,
         originalRegion: discovery.region,
         region: TABLE_REGION_KEYS[index],
-        markerPosition: { ...TABLE_DISCOVERIES[index].markerPosition }
+        markerPosition: TABLE_MARKER_POSITIONS[index],
+        markerPositionMode: undefined,
+        markerOffset: undefined
       }))
     : next;
   initDiscoveries(DISCOVERIES);
@@ -1634,8 +1788,10 @@ async function activateCircularTableScenario(data) {
   Object.assign(activeScenario, {
     title: data.title, subtitle: data.subtitle, description: data.description,
     subject: data.subject, year: data.year, showBishop: data.showBishop,
-    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas, audio: data.audio
+    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas,
+    environmentModel: data.environmentModel, audio: data.audio
   });
+  await loadScenarioEnvironment(data.environmentModel);
   tableContent = { questions: data.questions, hymn: data.hymn, secondCycle: data.secondCycle || [] };
   applyScenarioChrome();
   if (supportCanvas) {
@@ -1844,6 +2000,50 @@ gltfLoader.setDRACOLoader(dracoLoader);
 const CANVAS_IMAGE_WIDTH = 1024;
 const CANVAS_IMAGE_HEIGHT = 1536;
 
+async function loadScenarioEnvironment(config) {
+  if (scenarioEnvironmentRoot) {
+    scene.remove(scenarioEnvironmentRoot);
+    scenarioEnvironmentRoot.traverse(node => {
+      if (!node.isMesh) return;
+      node.geometry?.dispose();
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      materials.filter(Boolean).forEach(material => {
+        Object.values(material).forEach(value => {
+          if (value?.isTexture) value.dispose();
+        });
+        material.dispose();
+      });
+    });
+    scenarioEnvironmentRoot = null;
+  }
+  if (!config?.modelUrl) return;
+
+  const gltf = await gltfLoader.loadAsync(config.modelUrl);
+  const root = gltf.scene;
+  root.name = config.name || 'Scenario_Environment';
+  root.rotation.y = Number(config.rotationY) || 0;
+  const sourceBounds = new THREE.Box3().setFromObject(root);
+  const sourceHeight = sourceBounds.getSize(new THREE.Vector3()).y;
+  const targetHeight = Number(config.height);
+  const scale = targetHeight > 0 && sourceHeight > 0 ? targetHeight / sourceHeight : (Number(config.scale) || 1);
+  root.scale.setScalar(scale);
+  root.updateMatrixWorld(true);
+  const scaledBounds = new THREE.Box3().setFromObject(root);
+  const position = config.position || {};
+  root.position.set(
+    Number(position.x) || 0,
+    (Number(position.y) || 0) - scaledBounds.min.y,
+    Number(position.z) || 0
+  );
+  root.traverse(node => {
+    if (!node.isMesh) return;
+    node.castShadow = true;
+    node.receiveShadow = true;
+  });
+  scene.add(root);
+  scenarioEnvironmentRoot = root;
+}
+
 function positionSupportCanvas(root = activeSculptureRoot) {
   if (!supportCanvas) return;
   supportCanvas.scale.setScalar(activeScenario.canvas?.scale ?? 1);
@@ -1968,13 +2168,17 @@ window.setCanvasBrightness = function(value) {
   supportCanvasBrightness = THREE.MathUtils.clamp(parsed, 0, 2.5);
   document.getElementById('canvas-brightness-value').textContent = supportCanvasBrightness.toFixed(2) + '×';
   const defaultMap = defaultSupportCanvasTexture();
-  updateCanvasMaterials(supportCanvasUserTexture || defaultMap);
+  updateCanvasMaterials(supportCanvasVideoTexture || supportCanvasUserTexture || defaultMap);
 };
 
 window.handleCanvasImageUpload = async function(event) {
   const file = event.target.files?.[0];
   event.target.value = '';
   if (!file || !file.type.startsWith('image/')) return;
+  if (supportCanvasVideoTexture) {
+    stopCanvasVideoPlayback();
+    updateCanvasVideoButton();
+  }
   const status = document.getElementById('canvas-status');
   status.textContent = 'Φόρτωση εικόνας…';
   const sourceUrl = URL.createObjectURL(file);
@@ -1997,6 +2201,7 @@ window.handleCanvasImageUpload = async function(event) {
 };
 
 window.restoreCanvasImage = function() {
+  if (supportCanvasVideoTexture) stopCanvasVideoPlayback();
   supportCanvasUserTexture?.dispose();
   supportCanvasUserTexture = null;
   const defaultMap = defaultSupportCanvasTexture();
