@@ -45,6 +45,27 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
 #info-panel .info-action { display: block; width: 100%; margin-top: 8px; padding: 9px 10px; border: 1px solid rgba(100, 180, 255, 0.25); border-radius: 6px; background: rgba(20, 40, 70, 0.7); color: #cfe6ff; text-align: left; font: inherit; font-size: 11px; cursor: pointer; }
 #info-panel .info-action:hover { background: rgba(30, 65, 110, 0.9); border-color: rgba(100, 180, 255, 0.55); }
 #scenario-panel { position: absolute; top: 80px; right: 16px; width: 320px; max-width: calc(100vw - 32px); display: none; z-index: 50; }
+#table-panel { position: absolute; top: 80px; left: 16px; width: 315px; max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); overflow-y: auto; display: none; z-index: 55; }
+#table-panel .header, #table-hymn-panel .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+#table-panel .region-name, #table-hymn-panel .region-name { color:#ffda92; font-size:14px; font-weight:600; }
+#table-panel .close-btn, #table-hymn-panel .close-btn { background:none; border:none; color:#abb8c7; font-size:20px; cursor:pointer; }
+#table-sector-list { display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin:10px 0; }
+#table-sector-list button { border:1px solid #80613a; border-radius:6px; background:#2a211b; color:#f3d9a7; padding:8px 3px; cursor:pointer; font-size:11px; }
+#table-sector-list button.active { border-color:#ffe4a6; background:#684721; }
+#table-sector-list button.done { border-color:#92d3a9; background:#1e4934; color:#e8fff0; }
+#table-confirm { width:100%; padding:10px; border:0; border-radius:6px; background:#bd8334; color:#18120b; font-weight:700; cursor:pointer; }
+#table-confirm:disabled { opacity:.45; cursor:default; }
+#table-challenge { white-space:pre-line; line-height:1.55; }
+#table-hymn-panel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(520px,calc(100vw - 32px)); max-height:calc(100vh - 40px); overflow:auto; display:none; z-index:70; border-color:#c89c55; box-shadow:0 0 80px #eebd6140; }
+#table-hymn-text { white-space:pre-wrap; line-height:1.6; color:#e9e0cf; font-size:14px; margin:12px 0; }
+#table-hymn-audio { width:100%; display:none; }
+#table-second-cycle { display:none; margin-top:10px; }
+.circular-table-mode #btn-table { order:-1; }
+@media (max-width:760px) {
+  .circular-table-mode #top-bar { display:none; }
+  .circular-table-mode #toggle-row { top:8px; left:8px; right:8px; max-width:none; justify-content:center; }
+  .circular-table-mode #table-panel { top:132px; left:8px; }
+}
 #legend, #stats, #controls { display: none; }
 
 #legend { position: absolute; top: 80px; left: 16px; min-width: 170px; }
@@ -192,6 +213,7 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
     <button class="toggle-btn" id="btn-assets" onclick="togglePanel('asset-panel')">📦 3D Assets</button>
     <button class="toggle-btn" id="btn-json" onclick="toggleJsonPanel()">📋 JSON</button>
     <button class="toggle-btn" id="btn-scenario" onclick="togglePanel('scenario-panel')">🎬 Σενάριο</button>
+    <button class="toggle-btn" id="btn-table" style="display:none" onclick="togglePanel('table-panel')">🕯️ Τράπεζα 0/6</button>
     <button class="toggle-btn" id="btn-audio" onclick="unlockLessonAudio()">🔊 Ενεργοποίηση ήχου</button>
     <button class="toggle-btn" id="btn-bishop" onclick="togglePanel('bishop-panel')">♟️ Bishop</button>
   </div>
@@ -217,6 +239,7 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
       <option value="classroom">Interactive Sculpture — ελεύθερη τάξη</option>
       <option value="slides-discovery">Google Slides — ανακαλύψεις τάξης</option>
       <option value="basileiada">Βασιλειάδα — έμπρακτη φιλανθρωπία</option>
+      <option value="circular-table">Κυκλική Τράπεζα της Εκκλησίας</option>
     </select>
     <div id="scenario-description" class="hud-text" style="margin-top:8px;"></div>
       <div id="slide-discovery-status" class="hud-text" style="margin-top:6px;"></div>
@@ -225,6 +248,24 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
       <button class="submit-btn" onclick="saveScenarioToGitHub()">☁️ GITHUB</button>
     </div>
     <div id="scenario-save-status" class="hud-text" style="margin-top:6px;">Το GITHUB χρησιμοποιεί το token του JSON panel.</div>
+  </div>
+
+  <div id="table-panel" class="hud-panel">
+    <div class="header"><span class="region-name">Κυκλική Τράπεζα της Εκκλησίας</span><button class="close-btn" onclick="closePanel('table-panel')" aria-label="Κλείσιμο">×</button></div>
+    <div class="hud-text" id="table-progress">0 από 6 περιοχές φωτισμένες</div>
+    <div id="table-sector-list"></div>
+    <div class="hud-text" id="table-challenge">Επίλεξε μια ακτίνα. Ο εκπαιδευτικός επιβεβαιώνει τη σωστή λύση της τάξης.</div>
+    <input id="table-answer" type="text" autocomplete="off" placeholder="Απάντηση της ομάδας" style="display:none;width:100%;margin:8px 0;padding:8px;border:1px solid #80613a;border-radius:6px;background:#1a202b;color:#fff">
+    <div class="hud-text" id="table-answer-status" role="status"></div>
+    <button id="table-confirm" type="button" disabled>Επιβεβαίωση σωστής λύσης</button>
+    <button id="table-open-hymn" class="submit-btn" type="button" style="display:none">Προβολή ολοκληρωμένου ύμνου</button>
+  </div>
+
+  <div id="table-hymn-panel" class="hud-panel" role="dialog" aria-labelledby="table-hymn-title">
+    <div class="header"><span class="region-name" id="table-hymn-title">Ύμνος</span><button class="close-btn" onclick="closePanel('table-hymn-panel')" aria-label="Κλείσιμο">×</button></div>
+    <div id="table-hymn-text"></div>
+    <audio id="table-hymn-audio" controls></audio>
+    <button id="table-second-cycle" class="submit-btn" type="button">Δεύτερος κύκλος · έννοιες του Σωφρονίου</button>
   </div>
 
   <div id="bishop-panel" class="hud-panel">
@@ -424,6 +465,23 @@ const categoryColors = {
 // published JSON (same pattern as the rest of your Sacred Blueprint pipeline).
 
 const SCENARIO_AUDIO_BASE = 'https://raw.githubusercontent.com/dporpatonelis-crypto/light-up-legacy/main/public/audio/freedom/';
+const TABLE_REGION_KEYS = ['base', 'trunk', 'arms', 'head', 'periphery', 'core'];
+const TABLE_DISCOVERIES = TABLE_REGION_KEYS.map((region, index) => {
+  const angle = index * Math.PI / 3;
+  return {
+    id: `table-sector-${index + 1}`, region, team: `Ακτίνα ${index + 1}`,
+    category: 'theological',
+    markerPosition: { x: Math.sin(angle) * 2.4, y: 2.25, z: Math.cos(angle) * 2.4 },
+    shortText: `Ακτίνα ${index + 1}`,
+    fullText: `Η λύση για την ακτίνα ${index + 1} επιβεβαιώθηκε από τον εκπαιδευτικό.`,
+    source: 'Κυκλική Τράπεζα της Εκκλησίας'
+  };
+});
+const TABLE_SCULPTURE = {
+  url: './models/circular-table-regions.glb', height: 3.3,
+  regions: Object.fromEntries(TABLE_REGION_KEYS.map((key, index) => [key, [`Table_sector_${index + 1}`]])),
+  regionLabels: Object.fromEntries(TABLE_REGION_KEYS.map((key, index) => [key, `Ακτίνα ${index + 1}`]))
+};
 
 const SCENARIOS = {
   classroom: {
@@ -479,6 +537,20 @@ const SCENARIOS = {
     showBishop: false,
     discoveries: [],
     audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
+  },
+  'circular-table': {
+    id: 'circular-table',
+    title: 'Κυκλική Τράπεζα της Εκκλησίας',
+    subtitle: 'Έξι λύσεις · μία κοινή φλόγα',
+    subject: 'Εκκλησία και ενότητα',
+    year: 2026,
+    description: 'Ο εκπαιδευτικός επιβεβαιώνει κάθε σωστή λύση. Μία ακτίνα φωτίζεται και στέλνει ενέργεια στην κεντρική φλόγα. Με έξι λύσεις ολοκληρώνεται ο δακτύλιος.',
+    showBishop: false,
+    sculpture: TABLE_SCULPTURE,
+    discoveries: TABLE_DISCOVERIES,
+    hymn: { title: 'Ύμνος', text: '', audioUrl: '' },
+    secondCycle: [],
+    audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   }
 };
 
@@ -488,9 +560,11 @@ const requestedMode = queryParams.get('mode');
 const selectedScenarioId = requestedMode === 'slides-discovery' ? 'slides-discovery' : requestedScenarioId;
 const activeScenarioId = Object.prototype.hasOwnProperty.call(SCENARIOS, selectedScenarioId) ? selectedScenarioId : 'classroom';
 const activeScenario = SCENARIOS[activeScenarioId];
+let tableModelSelected = activeScenarioId === 'circular-table';
 const lessonAudioConfig = activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} };
 const SLIDE_DISCOVERY_URL = 'data/slides-discoveries.json';
 let DISCOVERIES = activeScenario.discoveries || [];
+let slideDiscoverySource = [];
 let discoverySnapshotSignature = '';
 let appliedDiscoverySignature = '';
 
@@ -509,16 +583,16 @@ async function loadDiscoveries(force) {
     const data = await response.json();
     const next = Array.isArray(data) ? data : (data.discoveries || []);
     const signature = JSON.stringify(next);
-    if (!force && signature === discoverySnapshotSignature) return DISCOVERIES;
+    if (!force && signature === discoverySnapshotSignature) return slideDiscoverySource;
     discoverySnapshotSignature = signature;
-    DISCOVERIES = next.filter(item => item && item.region && item.fullText);
+    slideDiscoverySource = next.filter(item => item && item.region && item.fullText);
     if (data.topic) activeScenario.subtitle = 'Google Slides · ' + data.topic;
-    setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + DISCOVERIES.length + ' ευρήματα', false);
-    return DISCOVERIES;
+    setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + slideDiscoverySource.length + ' ευρήματα', false);
+    return slideDiscoverySource;
   } catch (error) {
     setSlideDiscoveryStatus('⚠️ Δεν φορτώθηκε το Google Slides snapshot ακόμη.', true);
     console.warn('slides-discoveries.json not available yet:', error);
-    return DISCOVERIES;
+    return slideDiscoverySource;
   }
 }
 
@@ -765,8 +839,16 @@ function applyScenarioChrome() {
   const bishopPanel = document.getElementById('bishop-panel');
   if (bishopButton) bishopButton.style.display = activeScenario.showBishop ? '' : 'none';
   if (bishopPanel && !activeScenario.showBishop) bishopPanel.style.display = 'none';
+  updateTableChrome();
 
   voiceReward.configure(activeScenario.audio);
+}
+
+function updateTableChrome() {
+  document.getElementById('btn-table').style.display = tableModelSelected ? '' : 'none';
+  document.getElementById('btn-canvas').style.display = tableModelSelected ? 'none' : '';
+  document.getElementById('btn-audio').style.display = tableModelSelected ? 'none' : '';
+  document.body.classList.toggle('circular-table-mode', tableModelSelected);
 }
 
 window.unlockLessonAudio = async function() {
@@ -871,6 +953,18 @@ Object.keys(regionsData).forEach(key => {
   light.position.set(0, 0, 0); scene.add(light); regionLights[key] = light;
 });
 
+// This second light and the unity ring belong only to the circular-table scenario.
+// Existing discovery and classroom lights keep their current values and behavior.
+const tableCenterLight = new THREE.PointLight(0xffc263, 0, 6);
+scene.add(tableCenterLight);
+const tableUnityRing = new THREE.Mesh(
+  new THREE.TorusGeometry(1, 0.018, 8, 96),
+  new THREE.MeshBasicMaterial({ color: 0xffd684, transparent: true, opacity: 0, depthWrite: false })
+);
+tableUnityRing.rotation.x = Math.PI / 2;
+tableUnityRing.visible = false;
+scene.add(tableUnityRing);
+
 // ========== SCULPTURE ==========
 const sculptureGroup = new THREE.Group(); scene.add(sculptureGroup);
 const regionMeshes = {};
@@ -967,6 +1061,17 @@ const sculptureModel = createSculptureModel({
   halo,
   onChange(root, modelConfig) {
     activeSculptureRoot = root;
+    const wasTableModelSelected = tableModelSelected;
+    tableModelSelected = Boolean(root && modelConfig?.url && new URL(modelConfig.url, location.href).pathname.endsWith('/models/circular-table-regions.glb'));
+    if (wasTableModelSelected && !tableModelSelected) coreLight.intensity = 1.5;
+    if (tableModelSelected && supportCanvas) {
+      const shift = -controls.target.x;
+      controls.target.x = 0;
+      camera.position.x += shift;
+      controls.update();
+    }
+    if (supportCanvas) supportCanvas.visible = !tableModelSelected;
+    updateTableChrome();
     for (const [key, data] of Object.entries(regionsData)) {
       const fallback = defaultRegionLabels[key];
       const label = modelConfig?.regionLabels?.[key];
@@ -1004,8 +1109,25 @@ const sculptureModel = createSculptureModel({
         regionLights.core.position.copy(lightPosition);
       }
     }
+    if (tableModelSelected && root) {
+      const bounds = new THREE.Box3().setFromObject(root);
+      const height = bounds.max.y - bounds.min.y;
+      const radius = (bounds.max.x - bounds.min.x) * 0.5;
+      tableCenterLight.position.set(0, bounds.min.y + height * 0.72, 0);
+      tableUnityRing.position.set(0, bounds.min.y + height * 0.47, 0);
+      tableUnityRing.scale.setScalar(radius * 1.025);
+      coreLight.intensity = 0;
+      TABLE_REGION_KEYS.forEach((key, index) => {
+        const angle = index * Math.PI / 3;
+        regionLights[key].position.set(Math.sin(angle) * radius * 0.78, bounds.min.y + height * 0.58, Math.cos(angle) * radius * 0.78);
+      });
+    }
     positionDiscoverySpotlights(root);
     positionSupportCanvas(root);
+    if (tableModelSelected) {
+      loadTableContent();
+      updateTablePanel();
+    }
     clearHover();
     state.selectedRegion = null;
     window.closePanel?.('contrib-panel');
@@ -1031,6 +1153,160 @@ const activeReveals = []; // material/light tween state, processed each frame in
 const activeBursts = []; // little particle bursts for the "born from light" moment
 const discoveryOriginalMaterials = new Map(); // mesh -> original material colors before the hidden state
 const discoveryLightColor = 0xffefd6; // soft warm white keeps the sculpture's natural palette visible
+const tableTransfers = [];
+let tableContent = { questions: [], hymn: { title: 'Ύμνος', text: '', audioUrl: '' }, secondCycle: [] };
+let tableCycle = 1;
+let selectedTableSector = null;
+let tableRingRevealStart = null;
+
+function tableQuestion(index) {
+  const collection = tableCycle === 2 ? tableContent.secondCycle : tableContent.questions;
+  return collection[index] || {};
+}
+
+function normalizeTableAnswer(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('el').trim().replace(/\s+/g, ' ');
+}
+
+function updateTablePanel() {
+  if (!tableModelSelected) return;
+  const count = state.foundDiscoveries.size;
+  document.getElementById('btn-table').textContent = `🕯️ Τράπεζα ${count}/6`;
+  document.getElementById('table-progress').textContent = `${tableCycle === 2 ? 'Κύκλος Σωφρονίου · ' : ''}${count} από 6 περιοχές φωτισμένες${activeScenarioId === 'slides-discovery' ? ' · μετά την εύρεση clue' : ''}`;
+  const list = document.getElementById('table-sector-list');
+  list.replaceChildren(...TABLE_REGION_KEYS.map((region, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const label = (tableCycle === 1 ? tableContent.questions[index] : tableContent.secondCycle[index])?.object;
+    button.textContent = `${state.foundDiscoveries.has(DISCOVERIES[index]?.id) ? '✓ ' : ''}${index + 1}${label ? ` · ${label}` : ''}`;
+    if (index === selectedTableSector) button.classList.add('active');
+    if (state.foundDiscoveries.has(DISCOVERIES[index]?.id)) button.classList.add('done');
+    button.onclick = () => { selectedTableSector = index; updateTablePanel(); };
+    return button;
+  }));
+  const question = selectedTableSector == null ? null : tableQuestion(selectedTableSector);
+  const done = selectedTableSector == null || state.foundDiscoveries.has(DISCOVERIES[selectedTableSector]?.id);
+  document.getElementById('table-challenge').textContent = selectedTableSector == null
+    ? (activeScenarioId === 'slides-discovery'
+        ? 'Βρείτε τα clues στον χώρο. Κάθε εύρημα φωτίζει μία ακτίνα της τράπεζας.'
+        : 'Επίλεξε μια ακτίνα. Ο εκπαιδευτικός επιβεβαιώνει τη σωστή λύση της τάξης.')
+    : done && (question.verse || question.discovery)
+      ? `${question.object || `Ακτίνα ${selectedTableSector + 1}`}\n«${question.verse || ''}»\n${question.discovery || ''}`
+      : activeScenarioId === 'slides-discovery'
+        ? `Βρείτε το clue για την ακτίνα ${selectedTableSector + 1}. Η ανακάλυψη θα φωτίσει την περιοχή.`
+        : (question.prompt || `Ακτίνα ${selectedTableSector + 1}: παρουσιάστε τη λύση και ζητήστε επιβεβαίωση από τον εκπαιδευτικό.`);
+  const answer = document.getElementById('table-answer');
+  const hasAnswers = Array.isArray(question?.answers) && question.answers.length > 0;
+  answer.style.display = hasAnswers && !done && activeScenarioId !== 'slides-discovery' ? 'block' : 'none';
+  const confirm = document.getElementById('table-confirm');
+  confirm.disabled = done;
+  confirm.textContent = hasAnswers ? 'Έλεγχος λύσης' : 'Επιβεβαίωση σωστής λύσης';
+  confirm.style.display = activeScenarioId === 'slides-discovery' ? 'none' : 'block';
+  document.getElementById('table-open-hymn').style.display = count === 6 ? 'block' : 'none';
+}
+
+function openTableChallenge(markerObj) {
+  selectedTableSector = TABLE_REGION_KEYS.indexOf(markerObj.data.region);
+  if (selectedTableSector < 0) return;
+  document.getElementById('table-answer-status').textContent = '';
+  updateTablePanel();
+  window.openPanel('table-panel');
+}
+
+function confirmTableSolution() {
+  if (activeScenarioId !== 'circular-table' || selectedTableSector == null) return;
+  const marker = discoveryMarkers.find(item => item.data.region === TABLE_REGION_KEYS[selectedTableSector] && !item.found);
+  if (!marker) return;
+  const question = tableQuestion(selectedTableSector);
+  const accepted = Array.isArray(question.answers) ? question.answers.map(normalizeTableAnswer) : [];
+  if (accepted.length && !accepted.includes(normalizeTableAnswer(document.getElementById('table-answer').value))) {
+    document.getElementById('table-answer-status').textContent = 'Η λύση δεν ταιριάζει. Δοκιμάστε ξανά.';
+    return;
+  }
+  marker.approved = true;
+  document.getElementById('table-answer').value = '';
+  document.getElementById('table-answer-status').textContent = 'Η λύση επιβεβαιώθηκε.';
+  revealDiscovery(marker);
+}
+
+function showTableHymn() {
+  const hymn = tableContent.hymn || {};
+  document.getElementById('table-hymn-title').textContent = tableCycle === 2 ? 'Ο δεύτερος κύκλος ολοκληρώθηκε' : (hymn.title || 'Ύμνος');
+  document.getElementById('table-hymn-text').textContent = tableCycle === 2
+    ? 'Οι έξι έννοιες του δεύτερου κύκλου ενώθηκαν γύρω από την τράπεζα.'
+    : (hymn.text || 'Ο πρώτος κύκλος ολοκληρώθηκε. Ο ύμνος θα εμφανιστεί εδώ μόλις προστεθεί το εγκεκριμένο κείμενο ή ηχογράφηση.');
+  const audio = document.getElementById('table-hymn-audio');
+  if (hymn.audioUrl && tableCycle === 1) {
+    audio.src = hymn.audioUrl;
+    audio.style.display = 'block';
+  } else {
+    audio.pause(); audio.removeAttribute('src'); audio.style.display = 'none';
+  }
+  document.getElementById('table-second-cycle').style.display = tableCycle === 1 && tableContent.secondCycle.length === 6 ? 'block' : 'none';
+  window.openPanel('table-hymn-panel');
+}
+
+function startTableSecondCycle() {
+  if (tableContent.secondCycle.length !== 6 || tableCycle !== 1) return;
+  tableCycle = 2;
+  selectedTableSector = null;
+  clearDiscoveries();
+  DISCOVERIES = TABLE_DISCOVERIES.map((item, index) => ({
+    ...item, id: `table-sofronios-${index + 1}`, team: `Σωφρόνιος · Ακτίνα ${index + 1}`
+  }));
+  appliedDiscoverySignature = JSON.stringify(DISCOVERIES);
+  initDiscoveries(DISCOVERIES);
+  updateTablePanel();
+  window.openPanel('table-panel');
+}
+
+async function loadTableContent() {
+  if (!tableModelSelected) return;
+  try {
+    const response = await fetch('data/circular-table-content.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    tableContent = {
+      questions: Array.isArray(data.questions) ? data.questions.slice(0, 6) : [],
+      hymn: data.hymn && typeof data.hymn === 'object' ? data.hymn : tableContent.hymn,
+      secondCycle: Array.isArray(data.secondCycle) ? data.secondCycle : []
+    };
+  } catch (error) {
+    console.warn('Circular-table content unavailable:', error);
+  }
+  updateTablePanel();
+}
+
+document.getElementById('table-confirm').addEventListener('click', confirmTableSolution);
+document.getElementById('table-second-cycle').addEventListener('click', startTableSecondCycle);
+document.getElementById('table-open-hymn').addEventListener('click', showTableHymn);
+
+function sendTableEnergy(markerObj) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.075, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffd581 })
+  );
+  mesh.position.copy(markerObj.mesh.position);
+  scene.add(mesh);
+  tableTransfers.push({
+    mesh,
+    start: markerObj.mesh.position.clone(),
+    end: tableCenterLight.position.clone(),
+    startTime: clock.getElapsedTime(),
+    duration: 1.15
+  });
+}
+
+function completeTableCycle() {
+  tableUnityRing.visible = true;
+  tableRingRevealStart = clock.getElapsedTime();
+  discoverySpotlight.visible = true;
+  discoveryFrontSpotlight.visible = true;
+  for (const [light, intensity] of [[discoverySpotlight, 10], [discoveryFrontSpotlight, 7]]) {
+    activeReveals.push({ light, fromIntensity: light.intensity, toIntensity: intensity, startTime: clock.getElapsedTime(), duration: 2.2 });
+  }
+  showTableHymn();
+}
 
 function meshesInRegion(region) {
   const rm = regionMeshes[region];
@@ -1158,6 +1434,10 @@ function burstAt(position, colorHex) {
 // light, shows the full inscription text, and unlocks the canvas after the final discovery.
 function revealDiscovery(markerObj) {
   if (markerObj.found) return;
+  if (activeScenarioId === 'circular-table' && !markerObj.approved) {
+    openTableChallenge(markerObj);
+    return;
+  }
   markerObj.found = true;
   const disc = markerObj.data;
   state.foundDiscoveries.add(disc.id);
@@ -1184,11 +1464,11 @@ function revealDiscovery(markerObj) {
   });
   if (regionLights[disc.region]) {
     regionLights[disc.region].color.setHex(discoveryLightColor);
-    activeReveals.push({ light: regionLights[disc.region], fromIntensity: regionLights[disc.region].intensity, toIntensity: 0.85, startTime: clock.getElapsedTime(), duration: 2.2 });
+    activeReveals.push({ light: regionLights[disc.region], fromIntensity: regionLights[disc.region].intensity, toIntensity: tableModelSelected ? 5 : 0.85, startTime: clock.getElapsedTime(), duration: 2.2 });
   }
   regionsData[disc.region].category = disc.category;
   updateCanvasIllumination();
-  if (activeScenarioId === 'slides-discovery' && canvasUnlockFactor() === 1) {
+  if (activeScenarioId === 'slides-discovery' && !tableModelSelected && canvasUnlockFactor() === 1) {
     discoverySpotlight.visible = true;
     discoveryFrontSpotlight.visible = true;
     for (const [light, intensity] of [
@@ -1199,7 +1479,19 @@ function revealDiscovery(markerObj) {
     }
   }
 
-  showRevealPanel(markerObj, disc);
+  if (tableModelSelected) {
+    sendTableEnergy(markerObj);
+    activeReveals.push({
+      light: tableCenterLight,
+      fromIntensity: tableCenterLight.intensity,
+      toIntensity: 0.45 + state.foundDiscoveries.size * 0.34,
+      startTime: clock.getElapsedTime(),
+      duration: 1.6
+    });
+    updateTablePanel();
+    if (state.foundDiscoveries.size === 6) completeTableCycle();
+  }
+  if (activeScenarioId !== 'circular-table') showRevealPanel(markerObj, disc);
   voiceReward.play(disc.region);
   burstAt(markerObj.mesh.position, discoveryLightColor);
   markerObj.mesh.visible = false; markerObj.light.intensity = 0;
@@ -1214,6 +1506,7 @@ function initDiscoveries(list) {
     if (!darkenedRegions.has(disc.region)) { setRegionDark(disc.region); darkenedRegions.add(disc.region); }
     createHiddenMarker(disc);
   });
+  if (tableModelSelected) updateTablePanel();
 }
 let discoveryDataStarted = false;
 
@@ -1232,6 +1525,19 @@ function clearDiscoveries() {
   discoveryMarkers.length = 0;
   state.foundDiscoveries.clear();
   activeReveals.length = 0;
+  if (tableModelSelected) TABLE_REGION_KEYS.forEach(key => { regionLights[key].intensity = 0; });
+  tableCenterLight.intensity = 0;
+  tableUnityRing.visible = false;
+  tableUnityRing.material.opacity = 0;
+  tableRingRevealStart = null;
+  for (const transfer of tableTransfers) {
+    scene.remove(transfer.mesh);
+    transfer.mesh.geometry.dispose();
+    transfer.mesh.material.dispose();
+  }
+  tableTransfers.length = 0;
+  document.getElementById('table-hymn-audio').pause();
+  document.getElementById('table-hymn-panel').style.display = 'none';
   discoverySpotlight.intensity = 0;
   discoverySpotlight.visible = false;
   discoveryFrontSpotlight.intensity = 0;
@@ -1249,14 +1555,21 @@ function clearDiscoveries() {
 
 function applyDiscoverySnapshot(list) {
   const next = Array.isArray(list) ? list : [];
-  const signature = JSON.stringify(next);
+  const signature = JSON.stringify({ tableModelSelected, next });
   if (signature === appliedDiscoverySignature) {
     if (typeof drawMenu === 'function' && menuAttached) drawMenu();
     return;
   }
   appliedDiscoverySignature = signature;
   clearDiscoveries();
-  DISCOVERIES = next;
+  DISCOVERIES = activeScenarioId === 'slides-discovery' && tableModelSelected
+    ? next.slice(0, 6).map((discovery, index) => ({
+        ...discovery,
+        originalRegion: discovery.region,
+        region: TABLE_REGION_KEYS[index],
+        markerPosition: { ...TABLE_DISCOVERIES[index].markerPosition }
+      }))
+    : next;
   initDiscoveries(DISCOVERIES);
   if (activeScenarioId === 'slides-discovery') {
     applyScenarioChrome();
@@ -1337,6 +1650,7 @@ function clearHover() { state.hoveredRegion = null; state.hoveredAsset = null; s
 
 let lastClickTime = 0;
 function onClick(e) {
+  if (tableModelSelected && e.target.closest?.('#hud')) return;
   const now = Date.now(); const isDoubleClick = now - lastClickTime < 300; lastClickTime = now;
   if (state.hoveredMarker) { revealDiscovery(state.hoveredMarker); }
   else if (state.hoveredRegion) { state.selectedRegion = state.hoveredRegion; openPanel('contrib-panel'); document.getElementById('contrib-region-name').textContent = regionsData[state.hoveredRegion].name; }
@@ -1352,7 +1666,7 @@ window.addEventListener('keydown', onKeyDown);
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
 // ========== UI FUNCTIONS ==========
-const hudPanelIds = ['info-panel', 'legend', 'stats', 'controls', 'contrib-panel', 'asset-panel', 'canvas-panel', 'scenario-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel'];
+const hudPanelIds = ['info-panel', 'legend', 'stats', 'controls', 'contrib-panel', 'asset-panel', 'canvas-panel', 'scenario-panel', 'bishop-panel', 'json-panel', 'asset-edit-panel', 'table-panel', 'table-hymn-panel'];
 function hideHudPanels(exceptId) {
   hudPanelIds.forEach(pid => {
     const node = document.getElementById(pid);
@@ -1447,6 +1761,7 @@ const CANVAS_IMAGE_HEIGHT = 1536;
 
 function positionSupportCanvas(root = activeSculptureRoot) {
   if (!supportCanvas) return;
+  if (tableModelSelected) return;
   const bounds = new THREE.Box3();
   if (root) bounds.setFromObject(root);
   else bounds.setFromObject(sculptureGroup);
@@ -1561,6 +1876,7 @@ async function loadSupportCanvas() {
       canvasMaterial.needsUpdate = true;
     });
     scene.add(supportCanvas);
+    if (tableModelSelected) supportCanvas.visible = false;
     supportCanvasLight = new THREE.PointLight(0xffbb68, 0, 5, 2);
     supportCanvasLight.position.set(0, 2.0, 0.55);
     supportCanvas.add(supportCanvasLight);
@@ -1998,7 +2314,9 @@ function buildScenarioJSON() {
     subject: activeScenario.subject,
     year: activeScenario.year,
     showBishop: activeScenario.showBishop,
+    sculpture: sculptureModel.config,
     discoveries: DISCOVERIES || [],
+    ...(tableModelSelected ? { hymn: tableContent.hymn, secondCycle: tableContent.secondCycle } : {}),
     audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   };
 }
@@ -2180,6 +2498,7 @@ window.saveMemoryToGitHub = async function() {
 async function changeLessonSculpture(nextConfig) {
   const commit = await sculptureModel.prepare(nextConfig ?? null);
   if (!commit) return false;
+  const wasTableModelSelected = tableModelSelected;
 
   const contributionSnapshot = state.contributions.map(item => ({ ...item }));
   const regionSnapshot = Object.fromEntries(
@@ -2195,12 +2514,18 @@ async function changeLessonSculpture(nextConfig) {
     Object.assign(regionsData[key], value);
     applyVisualUpdate(key);
   });
+  if (tableModelSelected || wasTableModelSelected) {
+    TABLE_REGION_KEYS.forEach(key => { regionLights[key].intensity = 0; });
+  }
 
-  DISCOVERIES = discoverySnapshot;
-  appliedDiscoverySignature = JSON.stringify(DISCOVERIES);
-  if (DISCOVERIES.length) initDiscoveries(DISCOVERIES);
   if (activeScenarioId === 'slides-discovery') {
+    appliedDiscoverySignature = '';
+    applyDiscoverySnapshot(slideDiscoverySource);
     setSlideDiscoveryStatus('📡 Google Slides snapshot · ' + DISCOVERIES.length + ' ευρήματα', false);
+  } else {
+    DISCOVERIES = discoverySnapshot;
+    appliedDiscoverySignature = JSON.stringify({ tableModelSelected, next: DISCOVERIES });
+    if (DISCOVERIES.length) initDiscoveries(DISCOVERIES);
   }
   updateStats();
   updateLegend();
@@ -2214,6 +2539,14 @@ installSculpturePicker({
   change: changeLessonSculpture,
   download: () => window.downloadJSON()
 });
+if (activeScenarioId === 'circular-table' || (activeScenarioId === 'slides-discovery' && queryParams.get('sculpture') === 'circular-table')) {
+  changeLessonSculpture(TABLE_SCULPTURE).then(loaded => {
+    if (!loaded) document.getElementById('table-progress').textContent = 'Δεν φορτώθηκε το γλυπτό της τράπεζας.';
+  }).catch(error => {
+    console.error('Circular table model unavailable:', error);
+    document.getElementById('table-progress').textContent = 'Δεν φορτώθηκε το γλυπτό της τράπεζας.';
+  });
+}
 
 // ========== VR ==========
 // Tune these two numbers to change where the player spawns relative to the sculpture
@@ -2441,7 +2774,7 @@ function animate() {
     m.mesh.material.emissiveIntensity = pulse;
     m.mesh.scale.setScalar(1 + Math.sin(time * 2) * 0.08);
     m.light.intensity = 0.35 + pulse * 0.3;
-    if (camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
+    if (activeScenarioId !== 'circular-table' && camWorldPos.distanceTo(m.mesh.getWorldPosition(new THREE.Vector3())) < 1.1) revealDiscovery(m);
   });
 
   // Φάση 3: ease each region back to its original materials over ~2 seconds.
@@ -2462,6 +2795,23 @@ function animate() {
       r.light.intensity = r.fromIntensity + (r.toIntensity - r.fromIntensity) * eased;
     }
     if (t >= 1) activeReveals.splice(i, 1);
+  }
+
+  for (let i = tableTransfers.length - 1; i >= 0; i--) {
+    const transfer = tableTransfers[i];
+    const t = Math.min((time - transfer.startTime) / transfer.duration, 1);
+    transfer.mesh.position.lerpVectors(transfer.start, transfer.end, t);
+    transfer.mesh.position.y += Math.sin(t * Math.PI) * 0.4;
+    transfer.mesh.scale.setScalar(1 - t * 0.55);
+    if (t >= 1) {
+      scene.remove(transfer.mesh);
+      transfer.mesh.geometry.dispose();
+      transfer.mesh.material.dispose();
+      tableTransfers.splice(i, 1);
+    }
+  }
+  if (tableRingRevealStart !== null) {
+    tableUnityRing.material.opacity = Math.min((time - tableRingRevealStart) / 1.8, 0.88);
   }
 
   // Little "born from light" particle bursts at the moment of discovery.

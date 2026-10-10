@@ -124,6 +124,31 @@
       }
     },
     {
+      "id": "circular-table-church",
+      "name": "Κυκλική Τράπεζα της Εκκλησίας",
+      "description": "Ελαφρύ μοντέλο από Blender με έξι ακτινωτές περιοχές. Στις Ανακαλύψεις της τάξης, κάθε clue αποκαλύπτει μία ακτίνα και τροφοδοτεί την κεντρική φλόγα.",
+      "sculpture": {
+        "url": "./models/circular-table-regions.glb",
+        "height": 3.3,
+        "regions": {
+          "base": ["Table_sector_1"],
+          "trunk": ["Table_sector_2"],
+          "arms": ["Table_sector_3"],
+          "head": ["Table_sector_4"],
+          "periphery": ["Table_sector_5"],
+          "core": ["Table_sector_6"]
+        },
+        "regionLabels": {
+          "base": "Ακτίνα 1",
+          "trunk": "Ακτίνα 2",
+          "arms": "Ακτίνα 3",
+          "head": "Ακτίνα 4",
+          "periphery": "Ακτίνα 5",
+          "core": "Ακτίνα 6"
+        }
+      }
+    },
+    {
       "id": "continuity-tree-testaments",
       "name": "Δέντρο συνέχειας Π. και Κ. Διαθήκης",
       "description": "Συμβολικό δέντρο της συνέχειας Παλαιάς και Καινής Διαθήκης, με έξι φωτιζόμενα μέρη.",
