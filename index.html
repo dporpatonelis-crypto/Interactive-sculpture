@@ -469,11 +469,19 @@ const categoryColors = {
 
 const SCENARIO_AUDIO_BASE = 'https://raw.githubusercontent.com/dporpatonelis-crypto/light-up-legacy/main/public/audio/freedom/';
 const TABLE_REGION_KEYS = ['base', 'trunk', 'arms', 'head', 'periphery', 'core'];
+const TABLE_MARKER_POSITIONS = [
+  { x: 0.0, y: 2.25, z: 2.4 },
+  { x: 2.078, y: 2.25, z: 1.2 },
+  { x: 2.078, y: 2.25, z: -1.2 },
+  { x: 0.0, y: 2.25, z: -2.4 },
+  { x: -2.078, y: 2.25, z: -1.2 },
+  { x: -2.078, y: 2.25, z: 1.2 }
+];
 const TABLE_DISCOVERIES = TABLE_REGION_KEYS.map((region, index) => {
   return {
     id: `table-sector-${index + 1}`, region, team: `Ακτίνα ${index + 1}`,
     category: 'theological',
-    markerPositionMode: 'region-top', markerOffset: 0.16,
+    markerPosition: TABLE_MARKER_POSITIONS[index],
     shortText: `Ακτίνα ${index + 1}`,
     fullText: `Η λύση για την ακτίνα ${index + 1} επιβεβαιώθηκε από τον εκπαιδευτικό.`,
     source: 'Κυκλική Τράπεζα της Εκκλησίας'
@@ -585,6 +593,9 @@ function validateCircularTableScenario(data) {
   if (!data.canvas?.modelUrl || !data.canvas?.backgroundImage || !data.canvas?.videoUrl ||
       data.canvas.inscriptionSource !== 'hymn' || !data.canvas.illuminateAfterAllClues) {
     throw new Error('Λείπουν οι ρυθμίσεις του καμβά, του βίντεο ή του ύμνου.');
+  }
+  if (!data.environmentModel?.modelUrl || !(Number(data.environmentModel.height) > 0)) {
+    throw new Error('Λείπει το μόνιμο μοντέλο του Υπερώου.');
   }
   return data;
 }
@@ -1076,6 +1087,7 @@ function updateMeshMaterials(mesh, update) {
 
 let supportCanvas = null;
 let activeSculptureRoot = null;
+let scenarioEnvironmentRoot = null;
 let supportCanvasMaterials = [];
 let supportCanvasDefaultMaps = [];
 let supportCanvasUserTexture = null;
@@ -1755,8 +1767,9 @@ function applyDiscoverySnapshot(list) {
         ...discovery,
         originalRegion: discovery.region,
         region: TABLE_REGION_KEYS[index],
-        markerPositionMode: TABLE_DISCOVERIES[index].markerPositionMode,
-        markerOffset: TABLE_DISCOVERIES[index].markerOffset
+        markerPosition: TABLE_MARKER_POSITIONS[index],
+        markerPositionMode: undefined,
+        markerOffset: undefined
       }))
     : next;
   initDiscoveries(DISCOVERIES);
@@ -1775,8 +1788,10 @@ async function activateCircularTableScenario(data) {
   Object.assign(activeScenario, {
     title: data.title, subtitle: data.subtitle, description: data.description,
     subject: data.subject, year: data.year, showBishop: data.showBishop,
-    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas, audio: data.audio
+    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas,
+    environmentModel: data.environmentModel, audio: data.audio
   });
+  await loadScenarioEnvironment(data.environmentModel);
   tableContent = { questions: data.questions, hymn: data.hymn, secondCycle: data.secondCycle || [] };
   applyScenarioChrome();
   if (supportCanvas) {
@@ -1984,6 +1999,50 @@ dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5
 gltfLoader.setDRACOLoader(dracoLoader);
 const CANVAS_IMAGE_WIDTH = 1024;
 const CANVAS_IMAGE_HEIGHT = 1536;
+
+async function loadScenarioEnvironment(config) {
+  if (scenarioEnvironmentRoot) {
+    scene.remove(scenarioEnvironmentRoot);
+    scenarioEnvironmentRoot.traverse(node => {
+      if (!node.isMesh) return;
+      node.geometry?.dispose();
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      materials.filter(Boolean).forEach(material => {
+        Object.values(material).forEach(value => {
+          if (value?.isTexture) value.dispose();
+        });
+        material.dispose();
+      });
+    });
+    scenarioEnvironmentRoot = null;
+  }
+  if (!config?.modelUrl) return;
+
+  const gltf = await gltfLoader.loadAsync(config.modelUrl);
+  const root = gltf.scene;
+  root.name = config.name || 'Scenario_Environment';
+  root.rotation.y = Number(config.rotationY) || 0;
+  const sourceBounds = new THREE.Box3().setFromObject(root);
+  const sourceHeight = sourceBounds.getSize(new THREE.Vector3()).y;
+  const targetHeight = Number(config.height);
+  const scale = targetHeight > 0 && sourceHeight > 0 ? targetHeight / sourceHeight : (Number(config.scale) || 1);
+  root.scale.setScalar(scale);
+  root.updateMatrixWorld(true);
+  const scaledBounds = new THREE.Box3().setFromObject(root);
+  const position = config.position || {};
+  root.position.set(
+    Number(position.x) || 0,
+    (Number(position.y) || 0) - scaledBounds.min.y,
+    Number(position.z) || 0
+  );
+  root.traverse(node => {
+    if (!node.isMesh) return;
+    node.castShadow = true;
+    node.receiveShadow = true;
+  });
+  scene.add(root);
+  scenarioEnvironmentRoot = root;
+}
 
 function positionSupportCanvas(root = activeSculptureRoot) {
   if (!supportCanvas) return;
