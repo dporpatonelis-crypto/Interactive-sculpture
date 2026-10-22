@@ -1,0 +1,91 @@
+{
+  "type": "interactive-sculpture-scenario",
+  "version": "1.0",
+  "id": "spiritual-freedom",
+  "title": "Ίαση των παθών και πνευματική ελευθερία",
+  "subtitle": "Ανακαλύψεις της τάξης · Πέντε clues",
+  "description": "Πώς γίνεται το δόγμα πράξη στη ζωή; Βρείτε τα πέντε clues για να αποκαλύψετε το πάθος και τη θεραπεία σε κάθε όψη του ανθρώπου. Με την τελευταία ανακάλυψη φωτίζονται το γλυπτό και ο καμβάς.",
+  "subject": "Δόγμα και βίωμα · Η πνευματική ελευθερία",
+  "year": 2026,
+  "showBishop": false,
+  "revealTrigger": "clue",
+  "sourcePresentation": {
+    "title": "δόγμα και βίωμα",
+    "url": "https://docs.google.com/presentation/d/1kmnmtbIiGHRrPHlaKNaJ_QJPtuPZXSzGALTppAGILY0/edit#slide=id.christ_events_response_board_v1",
+    "slideNumber": 6,
+    "slideId": "christ_events_response_board_v1"
+  },
+  "sculpture": null,
+  "regionLabels": {
+    "head": "Κεφαλή",
+    "arms": "Χέρια",
+    "trunk": "Κορμός",
+    "base": "Πόδια",
+    "core": "Καρδιά"
+  },
+  "canvas": {
+    "modelUrl": "./models/tree-support-canvas.glb",
+    "backgroundImage": "./assets/healing-passions-spiritual-freedom.png",
+    "title": "Ίαση των παθών και πνευματική ελευθερία",
+    "illuminateAfterAllClues": true,
+    "visible": true
+  },
+  "discoveries": [
+    {
+      "id": "spiritual-freedom-head",
+      "region": "head",
+      "team": "Κεφαλή",
+      "category": "theological",
+      "markerPosition": { "x": 0.6, "y": 3.4, "z": 3.4 },
+      "shortText": "Ποιο πάθος δεσμεύει τον νου και πώς θεραπεύεται;",
+      "fullText": "Πάθος: υπερηφάνεια / αυτοθέωση · Θεραπεία: ταπείνωση του νοός",
+      "source": "δόγμα και βίωμα · διαφάνεια 6"
+    },
+    {
+      "id": "spiritual-freedom-arms",
+      "region": "arms",
+      "team": "Χέρια",
+      "category": "ethical",
+      "markerPosition": { "x": 1.0, "y": 2.25, "z": 3.4 },
+      "shortText": "Πώς μεταμορφώνεται η σχέση με τον συνάνθρωπο;",
+      "fullText": "Πάθος: έλλειψη φιλανθρωπίας · Θεραπεία: έμπρακτη αγάπη",
+      "source": "δόγμα και βίωμα · διαφάνεια 6"
+    },
+    {
+      "id": "spiritual-freedom-trunk",
+      "region": "trunk",
+      "team": "Κορμός",
+      "category": "ethical",
+      "markerPosition": { "x": 0.95, "y": 1.0, "z": 3.4 },
+      "shortText": "Ποια θεραπεία ελευθερώνει τον άνθρωπο από τη φιληδονία;",
+      "fullText": "Πάθος: φιληδονία / ανάγκη · Θεραπεία: εκούσια εγκράτεια",
+      "source": "δόγμα και βίωμα · διαφάνεια 6"
+    },
+    {
+      "id": "spiritual-freedom-base",
+      "region": "base",
+      "team": "Πόδια",
+      "category": "ethical",
+      "markerPosition": { "x": -1.65, "y": 0.75, "z": 3.4 },
+      "shortText": "Πώς αλλάζει η πορεία όταν ο άνθρωπος αποπροσανατολίζεται;",
+      "fullText": "Πάθος: πλάνη / αποπροσανατολισμός · Θεραπεία: μετάνοια",
+      "source": "δόγμα και βίωμα · διαφάνεια 6"
+    },
+    {
+      "id": "spiritual-freedom-core",
+      "region": "core",
+      "team": "Καρδιά",
+      "category": "theological",
+      "markerPosition": { "x": -1.6, "y": 3.15, "z": 3.4 },
+      "shortText": "Πώς ανοίγει η καρδιά από την απομόνωση στην κοινωνία;",
+      "fullText": "Πάθος: αχαριστία / απομόνωση · Θεραπεία: ευχαριστία και θέωση",
+      "source": "δόγμα και βίωμα · διαφάνεια 6"
+    }
+  ],
+  "audio": {
+    "enabled": false,
+    "oncePerRegion": true,
+    "volume": 0.82,
+    "rewards": {}
+  }
+}
