@@ -61,10 +61,15 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
 #table-hymn-audio { width:100%; display:none; }
 #table-second-cycle { display:none; margin-top:10px; }
 .circular-table-mode #btn-table { order:-1; }
+.spiritual-freedom-mode #top-bar { width: min(680px, calc(100vw - 32px)); box-sizing: border-box; }
+.spiritual-freedom-mode #audio-status { display: none; }
+.spiritual-freedom-mode #toggle-row { top: 100px; left: 16px; right: 16px; justify-content: center; flex-wrap: wrap; }
+.spiritual-freedom-mode #hud > .hud-panel:not(#top-bar):not(#table-hymn-panel) { top: 148px; max-height: calc(100vh - 164px); overflow-y: auto; }
 @media (max-width:760px) {
   .circular-table-mode #top-bar { display:none; }
   .circular-table-mode #toggle-row { top:8px; left:8px; right:8px; max-width:none; justify-content:center; }
   .circular-table-mode #table-panel { top:132px; left:8px; }
+  .spiritual-freedom-mode #hud > .hud-panel:not(#top-bar):not(#table-hymn-panel) { top: 220px; max-height: calc(100vh - 236px); }
 }
 #legend, #stats, #controls { display: none; }
 
@@ -238,6 +243,7 @@ body { overflow: hidden; background: #0a0a0f; font-family: 'Segoe UI', Tahoma, G
     <select id="scenario-select" onchange="applyScenarioSelection(this.value)" style="width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(100,180,255,0.2);border-radius:6px;color:#ddeeff;padding:7px 8px;font-size:12px;">
       <option value="classroom">Interactive Sculpture — ελεύθερη τάξη</option>
       <option value="slides-discovery">Google Slides — ανακαλύψεις τάξης</option>
+      <option value="spiritual-freedom">Ίαση των παθών και πνευματική ελευθερία</option>
       <option value="basileiada">Βασιλειάδα — έμπρακτη φιλανθρωπία</option>
       <option value="circular-table">Κυκλική Τράπεζα της Εκκλησίας</option>
     </select>
@@ -548,6 +554,18 @@ const SCENARIOS = {
     discoveries: [],
     audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   },
+  'spiritual-freedom': {
+    id: 'spiritual-freedom',
+    title: 'Ίαση των παθών και πνευματική ελευθερία',
+    subtitle: 'Ανακαλύψεις της τάξης · Πέντε clues',
+    subject: 'Δόγμα και βίωμα · Η πνευματική ελευθερία',
+    year: 2026,
+    description: 'Πέντε αυτόνομες ανακαλύψεις για τα πάθη και τη θεραπεία. Επίλεξε κάθε clue για να εμφανιστεί η απάντηση και να φωτιστεί η αντίστοιχη περιοχή.',
+    showBishop: false,
+    revealTrigger: 'clue',
+    discoveries: [],
+    audio: { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
+  },
   'circular-table': {
     id: 'circular-table',
     title: 'Κυκλική Τράπεζα της Εκκλησίας',
@@ -607,6 +625,31 @@ function fetchCircularTableScenario() {
     });
   }
   return circularTableScenarioRequest;
+}
+
+function validateSpiritualFreedomScenario(data) {
+  const keys = ['head', 'arms', 'trunk', 'base', 'core'];
+  if (data?.type !== 'interactive-sculpture-scenario' || data.id !== 'spiritual-freedom' || data.revealTrigger !== 'clue') {
+    throw new Error('Μη έγκυρο σενάριο πνευματικής ελευθερίας.');
+  }
+  if (!Array.isArray(data.discoveries) || data.discoveries.length !== keys.length ||
+      new Set(data.discoveries.map(disc => disc?.id)).size !== keys.length ||
+      new Set(data.discoveries.map(disc => disc?.region)).size !== keys.length ||
+      data.discoveries.some(disc => !disc?.id || !keys.includes(disc.region) || !disc.fullText?.trim() ||
+        !['x', 'y', 'z'].every(axis => Number.isFinite(disc.markerPosition?.[axis])))) {
+    throw new Error('Χρειάζονται πέντε έγκυρα clues: κεφαλή, χέρια, κορμός, πόδια και καρδιά.');
+  }
+  if (!data.canvas?.modelUrl || !data.canvas.backgroundImage || !data.canvas.illuminateAfterAllClues ||
+      !keys.every(key => typeof data.regionLabels?.[key] === 'string' && data.regionLabels[key].trim())) {
+    throw new Error('Λείπουν η εικόνα του καμβά ή οι ονομασίες των πέντε περιοχών.');
+  }
+  return data;
+}
+
+async function fetchSpiritualFreedomScenario() {
+  const response = await fetch('./scenarios/spiritual-freedom.json', { cache: 'no-store' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return validateSpiritualFreedomScenario(await response.json());
 }
 
 const queryParams = new URLSearchParams(window.location.search);
@@ -870,6 +913,7 @@ const voiceReward = createVoiceReward();
 
 function applyScenarioChrome() {
   document.title = activeScenario.title;
+  document.body.classList.toggle('spiritual-freedom-mode', activeScenarioId === 'spiritual-freedom');
   const title = document.getElementById('lesson-main-title');
   const subtitle = document.getElementById('lesson-sub-title');
   if (title) title.textContent = '🏛️ ' + activeScenario.title;
@@ -889,7 +933,11 @@ function applyScenarioChrome() {
   }
   const description = document.getElementById('scenario-description');
   if (description) description.textContent = activeScenario.description;
-  document.getElementById('scenario-json-editor-button').style.display = activeScenarioId === 'circular-table' ? '' : 'none';
+  document.getElementById('scenario-json-editor-button').style.display = ['circular-table', 'spiritual-freedom'].includes(activeScenarioId) ? '' : 'none';
+  for (const [key, label] of Object.entries(activeScenario.regionLabels || {})) {
+    if (regionsData[key]) Object.assign(regionsData[key], { name: label, label });
+  }
+  if (activeScenario.regionLabels) updateLegend();
 
   const bishopButton = document.getElementById('btn-bishop');
   const bishopPanel = document.getElementById('bishop-panel');
@@ -916,6 +964,8 @@ window.applyScenarioSelection = function(id) {
   if (!SCENARIOS[id]) return;
   const url = new URL(window.location.href);
   url.searchParams.set('scenario', id);
+  url.searchParams.delete('mode');
+  url.searchParams.delete('sculpture');
   window.location.href = url.toString();
 };
 
@@ -1248,7 +1298,7 @@ const sculptureModel = createSculptureModel({
     updateTableChrome();
     for (const [key, data] of Object.entries(regionsData)) {
       const fallback = defaultRegionLabels[key];
-      const label = modelConfig?.regionLabels?.[key];
+      const label = activeScenario.regionLabels?.[key] || modelConfig?.regionLabels?.[key];
       data.name = label || fallback.name;
       data.label = label || fallback.label;
     }
@@ -1656,7 +1706,7 @@ function revealDiscovery(markerObj) {
   }
   regionsData[disc.region].category = disc.category;
   updateCanvasIllumination();
-  if (activeScenarioId === 'slides-discovery' && !tableModelSelected && canvasUnlockFactor() === 1) {
+  if ((activeScenarioId === 'slides-discovery' || activeScenario.revealTrigger === 'clue') && !tableModelSelected && canvasUnlockFactor() === 1) {
     discoverySpotlight.visible = true;
     discoveryFrontSpotlight.visible = true;
     for (const [light, intensity] of [
@@ -1686,6 +1736,7 @@ function revealDiscovery(markerObj) {
   voiceReward.play(disc.region);
   burstAt(markerObj.mesh.position, discoveryLightColor);
   markerObj.mesh.visible = false; markerObj.light.intensity = 0;
+  if (state.hoveredMarker === markerObj) clearHover();
 
   updateLegend();
   if (typeof drawMenu === 'function' && menuAttached) drawMenu();
@@ -1808,7 +1859,39 @@ async function activateCircularTableScenario(data) {
   applyDiscoverySnapshot(data.discoveries);
 }
 
+async function activateSpiritualFreedomScenario(data) {
+  validateSpiritualFreedomScenario(data);
+  const loaded = await changeLessonSculpture(data.sculpture ?? null);
+  if (!loaded) throw new Error('Δεν φορτώθηκε το γλυπτό.');
+  Object.assign(activeScenario, {
+    title: data.title, subtitle: data.subtitle, description: data.description,
+    subject: data.subject, year: data.year, showBishop: data.showBishop,
+    sculpture: data.sculpture, revealTrigger: data.revealTrigger, canvas: data.canvas,
+    regionLabels: data.regionLabels, sourcePresentation: data.sourcePresentation, audio: data.audio
+  });
+  applyScenarioChrome();
+  if (supportCanvas) {
+    supportCanvas.visible = data.canvas.visible !== false;
+    positionSupportCanvas();
+    await loadScenarioCanvasArtwork();
+    document.getElementById('canvas-status').textContent = '✅ Ο καμβάς δείχνει την εικόνα «' + data.canvas.title + '».';
+  }
+  applyDiscoverySnapshot(data.discoveries);
+}
+
 async function startDiscoveryData() {
+  if (activeScenarioId === 'spiritual-freedom') {
+    try {
+      await activateSpiritualFreedomScenario(await fetchSpiritualFreedomScenario());
+      setSlideDiscoveryStatus('📌 Αυτοτελές σενάριο · πέντε ευρήματα', false);
+      setScenarioSaveStatus('✅ Φορτώθηκε το σενάριο με πέντε clues.', false);
+    } catch (error) {
+      console.error('Spiritual freedom scenario unavailable:', error);
+      setSlideDiscoveryStatus('❌ Δεν φορτώθηκε το σενάριο πνευματικής ελευθερίας.', true);
+      setScenarioSaveStatus('❌ ' + error.message, true);
+    }
+    return;
+  }
   if (activeScenarioId === 'circular-table') {
     try {
       await activateCircularTableScenario(await fetchCircularTableScenario());
@@ -2221,7 +2304,9 @@ window.restoreCanvasImage = function() {
   if (defaultMap) updateCanvasMaterials(defaultMap);
   document.getElementById('canvas-status').textContent = activeScenario.canvas?.inscriptionSource === 'hymn'
     ? '↺ Επαναφέρθηκε η εικόνα με τον ύμνο στο Άγιο Πνεύμα.'
-    : '↺ Επαναφέρθηκε η εικόνα του Δέντρου της Αποκάλυψης.';
+    : activeScenario.canvas?.backgroundImage
+      ? '↺ Επαναφέρθηκε η εικόνα «' + activeScenario.canvas.title + '».'
+      : '↺ Επαναφέρθηκε η εικόνα του Δέντρου της Αποκάλυψης.';
 };
 
 window.toggleSupportCanvasVisibility = function() {
@@ -2258,13 +2343,15 @@ async function loadSupportCanvas() {
     supportCanvas.add(supportCanvasLight);
     updateCanvasIllumination();
     if (!tableModelSelected || activeScenario.canvas?.visible) positionSupportCanvas();
-    if (activeScenario.canvas?.backgroundImage && tableContent.hymn?.text) {
+    if (activeScenario.canvas?.backgroundImage && (activeScenario.canvas.inscriptionSource !== 'hymn' || tableContent.hymn?.text)) {
       try {
         await loadScenarioCanvasArtwork();
-        status.textContent = '✅ Ο καμβάς δείχνει την εικόνα της κλήσης με μόνιμη επιγραφή του ύμνου.';
+        status.textContent = activeScenario.canvas.inscriptionSource === 'hymn'
+          ? '✅ Ο καμβάς δείχνει την εικόνα της κλήσης με μόνιμη επιγραφή του ύμνου.'
+          : '✅ Ο καμβάς δείχνει την εικόνα «' + activeScenario.canvas.title + '».';
       } catch (error) {
-        status.textContent = '⚠️ Δεν φορτώθηκε η εικόνα του ύμνου.';
-        console.warn('Circular-table canvas artwork failed to load:', error);
+        status.textContent = '⚠️ Δεν φορτώθηκε η εικόνα του σεναρίου.';
+        console.warn('Scenario canvas artwork failed to load:', error);
       }
     } else status.textContent = '✅ Ο καμβάς είναι έτοιμος · η αρχική εικόνα είναι ενσωματωμένη στο GLB.';
     return supportCanvas;
@@ -2655,21 +2742,24 @@ window.importJSON = async function() {
   try {
     const data = JSON.parse(document.getElementById('json-editor').value);
     if (data.type === 'interactive-sculpture-scenario') {
-      if (activeScenarioId !== 'circular-table') {
-        throw new Error('Άνοιξε πρώτα το σενάριο «Κυκλική Τράπεζα της Εκκλησίας».');
-      }
-      validateCircularTableScenario(data);
-      const previousScenarioRequest = circularTableScenarioRequest;
-      circularTableScenarioRequest = Promise.resolve(data);
-      try {
-        await activateCircularTableScenario(data);
-      } catch (error) {
-        circularTableScenarioRequest = previousScenarioRequest;
-        throw error;
+      if (data.id === 'spiritual-freedom' && activeScenarioId === data.id) {
+        await activateSpiritualFreedomScenario(data);
+      } else if (data.id !== 'circular-table' || activeScenarioId !== data.id) {
+        throw new Error('Άνοιξε πρώτα το αντίστοιχο σενάριο από το μενού «Σενάριο».');
+      } else {
+        validateCircularTableScenario(data);
+        const previousScenarioRequest = circularTableScenarioRequest;
+        circularTableScenarioRequest = Promise.resolve(data);
+        try {
+          await activateCircularTableScenario(data);
+        } catch (error) {
+          circularTableScenarioRequest = previousScenarioRequest;
+          throw error;
+        }
       }
       jsonEditorMode = 'scenario';
       document.getElementById('json-editor').value = JSON.stringify(buildScenarioJSON(), null, 2);
-      setScenarioSaveStatus('✅ Το σενάριο JSON φορτώθηκε με έξι clues.', false);
+      setScenarioSaveStatus('✅ Το σενάριο JSON φορτώθηκε με ' + DISCOVERIES.length + ' clues.', false);
       alert('✅ Το σενάριο φορτώθηκε επιτυχώς!');
       return;
     }
@@ -2734,6 +2824,9 @@ function buildScenarioJSON() {
     sculpture: sculptureModel.config || activeScenario.sculpture,
     discoveries: DISCOVERIES || [],
     ...(activeScenario.canvas ? { canvas: activeScenario.canvas } : {}),
+    ...(activeScenario.regionLabels ? { regionLabels: activeScenario.regionLabels } : {}),
+    ...(activeScenario.sourcePresentation ? { sourcePresentation: activeScenario.sourcePresentation } : {}),
+    ...(activeScenario.environmentModel ? { environmentModel: activeScenario.environmentModel } : {}),
     ...(tableModelSelected ? { questions: tableContent.questions, hymn: tableContent.hymn, secondCycle: tableContent.secondCycle } : {}),
     audio: activeScenario.audio || { enabled: false, oncePerRegion: true, volume: 0.82, rewards: {} }
   };
